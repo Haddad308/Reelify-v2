@@ -527,7 +527,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="w-full px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">Reelify Admin</h1>
           <div className="flex items-center gap-3">
             <button
@@ -552,7 +552,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab navigation */}
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="w-full px-6">
           <nav className="flex gap-1">
             <button
               onClick={() => setActiveTab("users")}
@@ -589,7 +589,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="w-full px-6 py-8 space-y-8">
         {/* ─── Users Tab ──────────────────────────────────────── */}
         {activeTab === "users" && (
           <>
