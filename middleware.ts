@@ -26,6 +26,11 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow the Sentry example page through without locale redirects or auth
+  if (pathname.startsWith("/sentry-example-page")) {
+    return NextResponse.next();
+  }
+
   // Allow /admin and /login through without user auth or locale redirect
   if (pathname.startsWith("/admin") || pathname.startsWith("/login")) {
     return NextResponse.next();
