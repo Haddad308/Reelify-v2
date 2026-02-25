@@ -48,6 +48,21 @@ interface DemoRequest {
 }
 
 type Tab = "users" | "demo-requests";
+type SortDirection = "asc" | "desc";
+
+type UserSortField =
+  | "name"
+  | "email"
+  | "phone"
+  | "credits"
+  | "used"
+  | "requests"
+  | "lastActive";
+
+type DemoSortField = "name" | "email" | "phone" | "locale" | "status" | "date";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 50, 100, 200] as const;
+const DEFAULT_PAGE_SIZE = 5;
 
 // ── Helpers ────────────────────────────────────────────────────
 function formatDate(iso: string | null) {
@@ -87,6 +102,24 @@ export default function AdminDashboard() {
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoStatusFilter, setDemoStatusFilter] = useState<string>("all");
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
+
+  // Sorting & pagination – Users
+  const [userSort, setUserSort] = useState<{ field: UserSortField; direction: SortDirection }>({
+    field: "name",
+    direction: "asc",
+  });
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [userSearch, setUserSearch] = useState("");
+
+  // Sorting & pagination – Demo Requests
+  const [demoSort, setDemoSort] = useState<{ field: DemoSortField; direction: SortDirection }>({
+    field: "date",
+    direction: "desc",
+  });
+  const [demoPage, setDemoPage] = useState(1);
+  const [demoPageSize, setDemoPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [demoSearch, setDemoSearch] = useState("");
 
   // Create user modal
   const [showCreate, setShowCreate] = useState(false);
@@ -327,10 +360,23 @@ export default function AdminDashboard() {
   };
 
   // ── Filtered demo requests ──────────────────────────────────
-  const filteredDemoRequests =
+  const filteredDemoRequestsByStatus =
     demoStatusFilter === "all"
       ? demoRequests
       : demoRequests.filter((r) => r.status === demoStatusFilter);
+
+  const filteredDemoRequests = demoSearch
+    ? filteredDemoRequestsByStatus.filter((r) => {
+        const q = demoSearch.toLowerCase();
+        return (
+          r.name.toLowerCase().includes(q) ||
+          r.email.toLowerCase().includes(q) ||
+          (r.phone || "").toLowerCase().includes(q) ||
+          (r.locale || "").toLowerCase().includes(q) ||
+          r.help_text.toLowerCase().includes(q)
+        );
+      })
+    : filteredDemoRequestsByStatus;
 
   const demoCounts = {
     all: demoRequests.length,
@@ -338,6 +384,111 @@ export default function AdminDashboard() {
     contacted: demoRequests.filter((r) => r.status === "contacted").length,
     converted: demoRequests.filter((r) => r.status === "converted").length,
     dismissed: demoRequests.filter((r) => r.status === "dismissed").length,
+  };
+
+  // ── Sorting helpers ─────────────────────────────────────────
+  const sortDirectionFactor = (direction: SortDirection) => (direction === "asc" ? 1 : -1);
+
+  const filteredUsers = userSearch
+    ? users.filter((u) => {
+        const q = userSearch.toLowerCase();
+        return (
+          u.display_name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          (u.phone || "").toLowerCase().includes(q) ||
+          (u.company || "").toLowerCase().includes(q)
+        );
+      })
+    : users;
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const factor = sortDirectionFactor(userSort.direction);
+    switch (userSort.field) {
+      case "name": {
+        return a.display_name.localeCompare(b.display_name) * factor;
+      }
+      case "email": {
+        return a.email.localeCompare(b.email) * factor;
+      }
+      case "phone": {
+        return (a.phone || "").localeCompare(b.phone || "") * factor;
+      }
+      case "credits": {
+        return (a.credits_remaining - b.credits_remaining) * factor;
+      }
+      case "used": {
+        return (a.usage.total_credits_used - b.usage.total_credits_used) * factor;
+      }
+      case "requests": {
+        return (a.usage.request_count - b.usage.request_count) * factor;
+      }
+      case "lastActive": {
+        const aTime = a.usage.last_used ? new Date(a.usage.last_used).getTime() : 0;
+        const bTime = b.usage.last_used ? new Date(b.usage.last_used).getTime() : 0;
+        return (aTime - bTime) * factor;
+      }
+      default:
+        return 0;
+    }
+  });
+
+  const totalUserPages = Math.max(1, Math.ceil(sortedUsers.length / userPageSize));
+  const currentUserPage = Math.min(userPage, totalUserPages);
+  const userStartIndex = (currentUserPage - 1) * userPageSize;
+  const paginatedUsers = sortedUsers.slice(userStartIndex, userStartIndex + userPageSize);
+
+  const sortedDemoRequests = [...filteredDemoRequests].sort((a, b) => {
+    const factor = sortDirectionFactor(demoSort.direction);
+    switch (demoSort.field) {
+      case "name": {
+        return a.name.localeCompare(b.name) * factor;
+      }
+      case "email": {
+        return a.email.localeCompare(b.email) * factor;
+      }
+      case "phone": {
+        return (a.phone || "").localeCompare(b.phone || "") * factor;
+      }
+      case "locale": {
+        return (a.locale || "").localeCompare(b.locale || "") * factor;
+      }
+      case "status": {
+        return a.status.localeCompare(b.status) * factor;
+      }
+      case "date": {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+        return (aTime - bTime) * factor;
+      }
+      default:
+        return 0;
+    }
+  });
+
+  const totalDemoPages = Math.max(1, Math.ceil(sortedDemoRequests.length / demoPageSize));
+  const currentDemoPage = Math.min(demoPage, totalDemoPages);
+  const demoStartIndex = (currentDemoPage - 1) * demoPageSize;
+  const paginatedDemoRequests = sortedDemoRequests.slice(
+    demoStartIndex,
+    demoStartIndex + demoPageSize
+  );
+
+  const handleUserSort = (field: UserSortField) => {
+    setUserSort((prev) =>
+      prev.field === field
+        ? { field, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { field, direction: "asc" }
+    );
+    setUserPage(1);
+  };
+
+  const handleDemoSort = (field: DemoSortField) => {
+    setDemoSort((prev) =>
+      prev.field === field
+        ? { field, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { field, direction: "asc" }
+    );
+    setDemoPage(1);
   };
 
   // ── Auth gate ────────────────────────────────────────────────
@@ -376,7 +527,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="w-full px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">Reelify Admin</h1>
           <div className="flex items-center gap-3">
             <button
@@ -401,7 +552,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab navigation */}
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="w-full px-6">
           <nav className="flex gap-1">
             <button
               onClick={() => setActiveTab("users")}
@@ -438,7 +589,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="w-full px-6 py-8 space-y-8">
         {/* ─── Users Tab ──────────────────────────────────────── */}
         {activeTab === "users" && (
           <>
@@ -457,14 +608,28 @@ export default function AdminDashboard() {
 
             {/* Users table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-semibold text-gray-900">Users</h2>
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white font-medium hover:shadow-md transition-all"
-                >
-                  + New User
-                </button>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-none sm:w-64">
+                    <input
+                      type="text"
+                      placeholder="Search users"
+                      value={userSearch}
+                      onChange={(e) => {
+                        setUserSearch(e.target.value);
+                        setUserPage(1);
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white font-medium hover:shadow-md transition-all whitespace-nowrap"
+                  >
+                    + New User
+                  </button>
+                </div>
               </div>
 
               {/* Table */}
@@ -472,18 +637,95 @@ export default function AdminDashboard() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                      <th className="px-6 py-3">Name</th>
-                      <th className="px-6 py-3">Email</th>
-                      <th className="px-6 py-3">Phone</th>
-                      <th className="px-6 py-3">Credits Left</th>
-                      <th className="px-6 py-3">Used</th>
-                      <th className="px-6 py-3">Requests</th>
-                      <th className="px-6 py-3">Last Active</th>
+                      <th className="px-6 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUserSort("name")}
+                          className="flex items-center gap-1"
+                        >
+                          Name
+                          {userSort.field === "name" && (
+                            <span>{userSort.direction === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUserSort("email")}
+                          className="flex items-center gap-1"
+                        >
+                          Email
+                          {userSort.field === "email" && (
+                            <span>{userSort.direction === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUserSort("phone")}
+                          className="flex items-center gap-1"
+                        >
+                          Phone
+                          {userSort.field === "phone" && (
+                            <span>{userSort.direction === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUserSort("credits")}
+                          className="flex items-center gap-1"
+                        >
+                          Credits Left
+                          {userSort.field === "credits" && (
+                            <span>{userSort.direction === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUserSort("used")}
+                          className="flex items-center gap-1"
+                        >
+                          Used
+                          {userSort.field === "used" && (
+                            <span>{userSort.direction === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUserSort("requests")}
+                          className="flex items-center gap-1"
+                        >
+                          Requests
+                          {userSort.field === "requests" && (
+                            <span>{userSort.direction === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-6 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUserSort("lastActive")}
+                          className="flex items-center gap-1"
+                        >
+                          Last Active
+                          {userSort.field === "lastActive" && (
+                            <span>{userSort.direction === "asc" ? "▲" : "▼"}</span>
+                          )}
+                        </button>
+                      </th>
                       <th className="px-6 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {users.map((user) => (
+                    {paginatedUsers.map((user) => (
                       <tr
                         key={user.id}
                         className={`hover:bg-gray-50 transition-colors ${selectedUserId === user.id ? "bg-pink-50" : ""}`}
@@ -613,6 +855,56 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              {users.length > 0 && (
+                <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 gap-4">
+                  <div>
+                    Showing {userStartIndex + 1}–
+                    {Math.min(userStartIndex + userPageSize, sortedUsers.length)} of{" "}
+                    {sortedUsers.length}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="hidden sm:inline text-gray-400">Rows per page</span>
+                    <select
+                      value={userPageSize}
+                      onChange={(e) => {
+                        const size = Number(e.target.value);
+                        setUserPageSize(size);
+                        setUserPage(1);
+                      }}
+                      className="border border-gray-200 rounded-md px-2 py-1 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-pink-400"
+                    >
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                      disabled={currentUserPage === 1}
+                      className="px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-default"
+                    >
+                      Previous
+                    </button>
+                    <span>
+                      Page {currentUserPage} of {totalUserPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setUserPage((p) => (p < totalUserPages ? p + 1 : p))
+                      }
+                      disabled={currentUserPage === totalUserPages}
+                      className="px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-default"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Create user modal */}
@@ -917,26 +1209,40 @@ export default function AdminDashboard() {
 
             {/* Demo requests table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
+              <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-semibold text-gray-900">Demo Requests</h2>
-                {/* Status filter pills */}
-                <div className="flex items-center gap-1.5">
-                  {(["all", ...STATUS_OPTIONS] as const).map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => setDemoStatusFilter(status)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors capitalize ${
-                        demoStatusFilter === status
-                          ? "bg-pink-500 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      {status}{" "}
-                      <span className="opacity-70">
-                        ({demoCounts[status as keyof typeof demoCounts] ?? 0})
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                  <div className="relative w-full sm:w-64">
+                    <input
+                      type="text"
+                      placeholder="Search requests"
+                      value={demoSearch}
+                      onChange={(e) => {
+                        setDemoSearch(e.target.value);
+                        setDemoPage(1);
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+                    />
+                  </div>
+                  {/* Status filter pills */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(["all", ...STATUS_OPTIONS] as const).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setDemoStatusFilter(status)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors capitalize ${
+                          demoStatusFilter === status
+                            ? "bg-pink-500 text-white"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        {status}{" "}
+                        <span className="opacity-70">
+                          ({demoCounts[status as keyof typeof demoCounts] ?? 0})
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -949,108 +1255,224 @@ export default function AdminDashboard() {
                     : `No ${demoStatusFilter} requests.`}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                        <th className="px-6 py-3">Name</th>
-                        <th className="px-6 py-3">Email</th>
-                        <th className="px-6 py-3">Phone</th>
-                        <th className="px-6 py-3">Locale</th>
-                        <th className="px-6 py-3">Status</th>
-                        <th className="px-6 py-3">Date</th>
-                        <th className="px-6 py-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {filteredDemoRequests.map((req) => (
-                        <>
-                          <tr
-                            key={req.id}
-                            className={`hover:bg-gray-50 transition-colors cursor-pointer ${
-                              expandedRequestId === req.id ? "bg-pink-50" : ""
-                            }`}
-                            onClick={() =>
-                              setExpandedRequestId(
-                                expandedRequestId === req.id ? null : req.id
-                              )
-                            }
-                          >
-                            <td className="px-6 py-4">
-                              <div className="font-medium text-gray-900">{req.name}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <a
-                                href={`mailto:${req.email}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-pink-600 hover:text-pink-700 hover:underline"
-                              >
-                                {req.email}
-                              </a>
-                            </td>
-                            <td className="px-6 py-4 text-gray-700">
-                              <a
-                                href={`tel:${req.phone}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="hover:text-pink-600 hover:underline"
-                              >
-                                {req.phone}
-                              </a>
-                            </td>
-                            <td className="px-6 py-4 text-gray-500 text-xs uppercase">
-                              {req.locale ?? "—"}
-                            </td>
-                            <td className="px-6 py-4">
-                              <select
-                                value={req.status}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => updateDemoStatus(req.id, e.target.value)}
-                                className={`text-xs font-semibold px-2.5 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-400 ${
-                                  STATUS_STYLES[req.status] ?? "bg-gray-100 text-gray-600"
-                                }`}
-                              >
-                                {STATUS_OPTIONS.map((s) => (
-                                  <option key={s} value={s} className="capitalize">
-                                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-6 py-4 text-gray-500 text-xs">
-                              {formatDate(req.created_at)}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteDemoRequest(req.id);
-                                }}
-                                className="px-3 py-1 text-xs rounded-lg text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                          {/* Expanded help text row */}
-                          {expandedRequestId === req.id && (
-                            <tr key={`${req.id}-detail`}>
-                              <td colSpan={7} className="px-6 py-4 bg-gray-50">
-                                <div className="space-y-1">
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Message
-                                  </p>
-                                  <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-                                    {req.help_text}
-                                  </p>
-                                </div>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                          <th className="px-6 py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleDemoSort("name")}
+                              className="flex items-center gap-1"
+                            >
+                              Name
+                              {demoSort.field === "name" && (
+                                <span>{demoSort.direction === "asc" ? "▲" : "▼"}</span>
+                              )}
+                            </button>
+                          </th>
+                          <th className="px-6 py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleDemoSort("email")}
+                              className="flex items-center gap-1"
+                            >
+                              Email
+                              {demoSort.field === "email" && (
+                                <span>{demoSort.direction === "asc" ? "▲" : "▼"}</span>
+                              )}
+                            </button>
+                          </th>
+                          <th className="px-6 py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleDemoSort("phone")}
+                              className="flex items-center gap-1"
+                            >
+                              Phone
+                              {demoSort.field === "phone" && (
+                                <span>{demoSort.direction === "asc" ? "▲" : "▼"}</span>
+                              )}
+                            </button>
+                          </th>
+                          <th className="px-6 py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleDemoSort("locale")}
+                              className="flex items-center gap-1"
+                            >
+                              Locale
+                              {demoSort.field === "locale" && (
+                                <span>{demoSort.direction === "asc" ? "▲" : "▼"}</span>
+                              )}
+                            </button>
+                          </th>
+                          <th className="px-6 py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleDemoSort("status")}
+                              className="flex items-center gap-1"
+                            >
+                              Status
+                              {demoSort.field === "status" && (
+                                <span>{demoSort.direction === "asc" ? "▲" : "▼"}</span>
+                              )}
+                            </button>
+                          </th>
+                          <th className="px-6 py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleDemoSort("date")}
+                              className="flex items-center gap-1"
+                            >
+                              Date
+                              {demoSort.field === "date" && (
+                                <span>{demoSort.direction === "asc" ? "▲" : "▼"}</span>
+                              )}
+                            </button>
+                          </th>
+                          <th className="px-6 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {paginatedDemoRequests.map((req) => (
+                          <>
+                            <tr
+                              key={req.id}
+                              className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                                expandedRequestId === req.id ? "bg-pink-50" : ""
+                              }`}
+                              onClick={() =>
+                                setExpandedRequestId(
+                                  expandedRequestId === req.id ? null : req.id
+                                )
+                              }
+                            >
+                              <td className="px-6 py-4">
+                                <div className="font-medium text-gray-900">{req.name}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <a
+                                  href={`mailto:${req.email}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-pink-600 hover:text-pink-700 hover:underline"
+                                >
+                                  {req.email}
+                                </a>
+                              </td>
+                              <td className="px-6 py-4 text-gray-700">
+                                <a
+                                  href={`tel:${req.phone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="hover:text-pink-600 hover:underline"
+                                >
+                                  {req.phone}
+                                </a>
+                              </td>
+                              <td className="px-6 py-4 text-gray-500 text-xs uppercase">
+                                {req.locale ?? "—"}
+                              </td>
+                              <td className="px-6 py-4">
+                                <select
+                                  value={req.status}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => updateDemoStatus(req.id, e.target.value)}
+                                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-400 ${
+                                    STATUS_STYLES[req.status] ?? "bg-gray-100 text-gray-600"
+                                  }`}
+                                >
+                                  {STATUS_OPTIONS.map((s) => (
+                                    <option key={s} value={s} className="capitalize">
+                                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-6 py-4 text-gray-500 text-xs">
+                                {formatDate(req.created_at)}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteDemoRequest(req.id);
+                                  }}
+                                  className="px-3 py-1 text-xs rounded-lg text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
+                                >
+                                  Delete
+                                </button>
                               </td>
                             </tr>
-                          )}
-                        </>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            {/* Expanded help text row */}
+                            {expandedRequestId === req.id && (
+                              <tr key={`${req.id}-detail`}>
+                                <td colSpan={7} className="px-6 py-4 bg-gray-50">
+                                  <div className="space-y-1">
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Message
+                                    </p>
+                                    <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                                      {req.help_text}
+                                    </p>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 gap-4">
+                    <div>
+                      Showing {demoStartIndex + 1}–
+                      {Math.min(demoStartIndex + demoPageSize, sortedDemoRequests.length)} of{" "}
+                      {sortedDemoRequests.length}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="hidden sm:inline text-gray-400">Rows per page</span>
+                      <select
+                        value={demoPageSize}
+                        onChange={(e) => {
+                          const size = Number(e.target.value);
+                          setDemoPageSize(size);
+                          setDemoPage(1);
+                        }}
+                        className="border border-gray-200 rounded-md px-2 py-1 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-pink-400"
+                      >
+                        {PAGE_SIZE_OPTIONS.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDemoPage((p) => Math.max(1, p - 1))}
+                        disabled={currentDemoPage === 1}
+                        className="px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-default"
+                      >
+                        Previous
+                      </button>
+                      <span>
+                        Page {currentDemoPage} of {totalDemoPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDemoPage((p) => (p < totalDemoPages ? p + 1 : p))
+                        }
+                        disabled={currentDemoPage === totalDemoPages}
+                        className="px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-default"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </>
