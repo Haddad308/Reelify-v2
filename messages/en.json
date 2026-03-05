@@ -57,7 +57,8 @@
       "tiktok": "TikTok",
       "youtube": "YouTube Shorts",
       "snapchat": "Snapchat Spotlight",
-      "linkedin": "LinkedIn Reels"
+      "linkedin": "LinkedIn Reels",
+      "facebook": "Facebook Reels"
     },
     "durationRecommendation": "We recommend {duration} seconds for {platform}.",
     "audiences": {

@@ -57,7 +57,8 @@
       "tiktok": "تيك توك",
       "youtube": "يوتيوب شورتس",
       "snapchat": "سناب شات سبوتلايت",
-      "linkedin": "لينكدإن ريلز"
+      "linkedin": "لينكدإن ريلز",
+      "facebook": "فيسبوك ريلز"
     },
     "durationRecommendation": "نوصي بمدة {duration} ثانية لمنصة {platform}.",
     "audiences": {
