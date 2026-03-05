@@ -57,7 +57,6 @@
       "tiktok": "TikTok",
       "youtube": "YouTube Shorts",
       "snapchat": "Snapchat Spotlight",
-      "facebook": "Facebook Reels",
       "linkedin": "LinkedIn Reels"
     },
     "durationRecommendation": "We recommend {duration} seconds for {platform}.",
@@ -96,11 +95,6 @@
         "Keep text short and engaging",
         "Daily stories and quick interactions boost reach",
         "Use two to three hashtags maximum for better results"
-      ],
-      "facebook": [
-        "Storytelling content achieves higher engagement on Facebook",
-        "Posts with questions encourage comments",
-        "Medium-length text works best here"
       ],
       "tiktok": [
         "Start with a strong sentence that grabs attention within the first 3 seconds",
