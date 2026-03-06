@@ -56,6 +56,7 @@ import {
 import { playSuccessSound } from "@/lib/utils/audioUtils";
 import { parseJsonResponse } from "@/lib/utils/requestUtils";
 import posthog from "posthog-js";
+import { isPostHogExcludedUserId } from "@/lib/posthog";
 import { toast } from "sonner";
 
 type ClipItem = {
@@ -126,11 +127,16 @@ export default function HomePage() {
         if (typeof data?.credits_remaining === "number") {
           setCreditsRemaining(data.credits_remaining);
         }
-        // Identify user in PostHog if we have an ID
+        // Identify user in PostHog if we have an ID (skip excluded users)
         if (data?.id) {
-          posthog.identify(data.id, {
-            credits_remaining: data.credits_remaining,
-          });
+          if (isPostHogExcludedUserId(data.id)) {
+            posthog.opt_out_capturing();
+          } else {
+            posthog.opt_in_capturing();
+            posthog.identify(data.id, {
+              credits_remaining: data.credits_remaining,
+            });
+          }
         }
       } catch {
         // ignore
