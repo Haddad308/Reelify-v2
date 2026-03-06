@@ -7,28 +7,36 @@ import { ArrowDown2, Global } from "vuesax-icons-react";
 
 const LOCALE_COOKIE = "NEXT_LOCALE";
 
-export function LanguageSwitcher() {
+interface LanguageSwitcherProps {
+  onBeforeChange?: (proceed: () => void) => void;
+}
+
+export function LanguageSwitcher({ onBeforeChange }: LanguageSwitcherProps = {}) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations("languageSwitcher");
 
   const handleLocaleChange = (newLocale: Locale) => {
-    // Save preference to cookie (expires in 1 year)
     document.cookie = `${LOCALE_COOKIE}=${newLocale};path=/;max-age=${60 * 60 * 24 * 365}`;
-
-    // Get the path without the current locale prefix
     const pathWithoutLocale = pathname.replace(new RegExp(`^/${locale}`), "") || "/";
-
-    // Navigate to the new locale path
     router.push(`/${newLocale}${pathWithoutLocale}`);
   };
 
   const otherLocale = locale === "ar" ? "en" : "ar";
 
+  const handleClick = () => {
+    const proceed = () => handleLocaleChange(otherLocale as Locale);
+    if (onBeforeChange) {
+      onBeforeChange(proceed);
+    } else {
+      proceed();
+    }
+  };
+
   return (
     <button
-      onClick={() => handleLocaleChange(otherLocale as Locale)}
+      onClick={handleClick}
       className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors duration-200"
       aria-label={t("language")}
     >

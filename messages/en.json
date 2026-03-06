@@ -18,7 +18,10 @@
     "creditsRemaining": "{count} min",
     "logout": "Log out",
     "logoutConfirmTitle": "Log out?",
-    "logoutConfirmMessage": "Are you sure you want to log out? You will need to sign in again to continue."
+    "logoutConfirmMessage": "Are you sure you want to log out? You will need to sign in again to continue.",
+    "uploadNewVideo": "Upload a new video",
+    "resetConfirmTitle": "Upload a new video?",
+    "resetConfirmMessage": "You will lose all your current work, including the uploaded video and generated clips. This cannot be undone."
   },
   "home": {
     "title": "Create Professional Reels",
