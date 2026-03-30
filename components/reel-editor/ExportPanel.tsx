@@ -31,7 +31,7 @@ type SelectedPlatform =
   | "linkedin"
   | "download";
 
-const PUBLISHABLE_PLATFORMS: SelectedPlatform[] = ["youtube", "facebook"];
+const PUBLISHABLE_PLATFORMS: SelectedPlatform[] = ["youtube"];
 
 const PLATFORM_CONFIG: Record<
   SelectedPlatform,
@@ -446,7 +446,7 @@ export function ExportPanel({
   const progressValue = isExporting ? exportProgress : publishProgress;
 
   // Available platforms to show in the grid
-  const availablePlatforms: SelectedPlatform[] = ["download", "youtube", "facebook"];
+  const availablePlatforms: SelectedPlatform[] = ["download", "youtube"];
 
   // Get the action button text based on selected platform
   const getActionButtonText = () => {
