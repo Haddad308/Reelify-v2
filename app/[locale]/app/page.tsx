@@ -114,6 +114,8 @@ export default function HomePage() {
   const [skipQuestions, setSkipQuestions] = useState(false);
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   // Fetch current user credits on mount and identify PostHog user
   useEffect(() => {
@@ -150,6 +152,45 @@ export default function HomePage() {
       globalThis.localStorage.removeItem("reelify_user_id");
     }
     router.push("/login");
+  };
+
+  const openResetConfirm = (action?: () => void) => {
+    setPendingAction(action !== undefined ? () => action : null);
+    setShowResetConfirm(true);
+  };
+
+  const handleReset = async () => {
+    setShowResetConfirm(false);
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action) {
+      action();
+      return;
+    }
+    posthog.capture("video_reset");
+    clearTranscriptStorage();
+    await clearAllStorage();
+    if (typeof globalThis.window !== "undefined") {
+      globalThis.sessionStorage.removeItem("reelify_clips");
+      globalThis.sessionStorage.removeItem("reelify_segments");
+      globalThis.sessionStorage.removeItem("reelify_screen");
+      globalThis.sessionStorage.removeItem("reelify_video_url");
+      globalThis.sessionStorage.removeItem("reelify_video_name");
+      globalThis.sessionStorage.removeItem("reelify_navigation_back");
+      globalThis.sessionStorage.removeItem("reelify_platform");
+      globalThis.sessionStorage.removeItem("reelify_video_blob_url");
+    }
+    setFile(null);
+    setClips([]);
+    setSegments([]);
+    setStatus("");
+    setProgress(0);
+    setError("");
+    setBackgroundResult(null);
+    setBackgroundError("");
+    setVideoBlobUrl(null);
+    setStep(1);
+    setScreen("upload");
   };
 
   // Set default values based on locale
@@ -232,6 +273,16 @@ export default function HomePage() {
     globalThis.sessionStorage.removeItem("reelify_segments");
     globalThis.localStorage.removeItem("reelify_segments");
   };
+
+  // Warn user on browser refresh/close when they have active work
+  useEffect(() => {
+    if (screen === "upload") return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [screen]);
 
   // Rotate through recommendations every 4 seconds when on loading screen
   useEffect(() => {
@@ -1133,15 +1184,26 @@ export default function HomePage() {
               {tCommon("closedBeta")}
             </span>
           </div>
-          <Link href={`/${locale}/app`}>
-            <Image
-              src="/logo.png"
-              alt="Reelify"
-              width={200}
-              height={100}
+          {screen !== "upload" ? (
+            <button
+              type="button"
+              onClick={() => openResetConfirm()}
               className="cursor-pointer hover:opacity-80 transition-opacity"
-            />
-          </Link>
+              aria-label={tCommon("uploadNewVideo")}
+            >
+              <Image src="/logo.png" alt="Reelify" width={200} height={100} />
+            </button>
+          ) : (
+            <Link href={`/${locale}/app`}>
+              <Image
+                src="/logo.png"
+                alt="Reelify"
+                width={200}
+                height={100}
+                className="cursor-pointer hover:opacity-80 transition-opacity"
+              />
+            </Link>
+          )}
           <div className="flex-1 flex items-center justify-end gap-3">
             {creditsRemaining !== null && (
               <span
@@ -1161,7 +1223,9 @@ export default function HomePage() {
             >
               {tCommon("logout")}
             </Button>
-            <LanguageSwitcher />
+            <LanguageSwitcher
+              onBeforeChange={screen !== "upload" ? (proceed) => openResetConfirm(proceed) : undefined}
+            />
           </div>
         </div>
 
@@ -1176,6 +1240,27 @@ export default function HomePage() {
               </Button>
               <Button type="button" variant="destructive" onClick={handleLogout}>
                 {tCommon("logout")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset confirmation dialog */}
+        <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+          <DialogContent className="gap-5 sm:max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                <Warning2 className="w-5 h-5 text-amber-600 dark:text-amber-400" size={20} variant="Bold" />
+              </div>
+              <DialogTitle className="text-xl">{tCommon("resetConfirmTitle")}</DialogTitle>
+            </div>
+            <DialogDescription className="text-base">{tCommon("resetConfirmMessage")}</DialogDescription>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end pt-2">
+              <Button className="hover:bg-muted" type="button" variant="outline" onClick={() => setShowResetConfirm(false)}>
+                {tCommon("cancel")}
+              </Button>
+              <Button type="button" variant="destructive" className="text-white" onClick={handleReset}>
+                {tCommon("uploadNewVideo")}
               </Button>
             </div>
           </DialogContent>
@@ -1360,6 +1445,7 @@ export default function HomePage() {
 
         {/* Form Screen */}
         {screen === "form" && (
+          <>
           <Card className="shadow-card border-0 bg-gradient-card animate-fade-in hover:shadow-card-hover transition-all duration-500">
             <CardContent className="p-10 space-y-10">
               {/* Progress */}
@@ -1834,6 +1920,17 @@ export default function HomePage() {
               )}
             </CardContent>
           </Card>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => openResetConfirm()}
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              <CloudAdd className="w-4 h-4" size={16} />
+              {tCommon("uploadNewVideo")}
+            </button>
+          </div>
+          </>
         )}
 
         {/* Loading Screen */}
@@ -1937,6 +2034,14 @@ export default function HomePage() {
               </div>
               <h2 className="text-3xl font-bold text-foreground">{tResults("clipsReady")}</h2>
               <p className="text-lg text-muted-foreground">{tResults("selectClip")}</p>
+              <button
+                type="button"
+                onClick={() => openResetConfirm()}
+                className="inline-flex items-center gap-2 font-semibold text-white badge-closed-beta p-3 rounded-lg transition-colors"
+              >
+                <CloudAdd className="w-4 h-4" size={16} />
+                {tCommon("uploadNewVideo")}
+              </button>
             </div>
             {clips.length === 0 ? (
               <p className="text-base text-muted-foreground text-center">
