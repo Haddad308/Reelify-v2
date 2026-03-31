@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import posthog from "posthog-js";
+import { isPostHogExcludedUserId } from "@/lib/posthog";
 import { defaultLocale } from "../../i18n/config";
 
 function LoginForm() {
@@ -25,7 +26,12 @@ function LoginForm() {
     }
 
     setLoading(true);
-    posthog.capture("login_attempted");
+    if (isPostHogExcludedUserId(trimmed)) {
+      posthog.opt_out_capturing();
+    } else {
+      posthog.opt_in_capturing();
+      posthog.capture("login_attempted");
+    }
 
     try {
       // Validate the user ID exists by calling the process API's user check
@@ -39,15 +45,18 @@ function LoginForm() {
       if (!res.ok) {
         const data = await res.json();
         const errorMsg = data.error || "Invalid User ID.";
-        posthog.capture("login_failed", { error_message: errorMsg });
+        if (!isPostHogExcludedUserId(trimmed)) {
+          posthog.capture("login_failed", { error_message: errorMsg });
+        }
         setError(errorMsg);
         setLoading(false);
         return;
       }
 
-      // Identify user in PostHog
-      posthog.identify(trimmed);
-      posthog.capture("login_succeeded");
+      if (!isPostHogExcludedUserId(trimmed)) {
+        posthog.identify(trimmed);
+        posthog.capture("login_succeeded");
+      }
 
       // Set the user_id cookie (expires in 1 year)
       document.cookie = `reelify_user_id=${trimmed}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
@@ -59,7 +68,9 @@ function LoginForm() {
       const next = searchParams.get("next") || `/${defaultLocale}/app`;
       router.push(next);
     } catch {
-      posthog.capture("login_failed", { error_message: "Network error" });
+      if (!isPostHogExcludedUserId(trimmed)) {
+        posthog.capture("login_failed", { error_message: "Network error" });
+      }
       setError("Something went wrong. Please try again.");
       setLoading(false);
     }
