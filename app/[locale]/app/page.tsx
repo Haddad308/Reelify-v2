@@ -789,9 +789,25 @@ export default function HomePage() {
       }
 
       setProgress(20);
+      setStatus(tLoading("uploadingAudio"));
+
+      // Upload audio to Vercel Blob via server-side proxy (avoids CORS on client upload)
+      const uploadForm = new FormData();
+      uploadForm.append("file", audioFile, audioFile.name);
+      const uploadResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadForm,
+      });
+      if (!uploadResponse.ok) {
+        const uploadError = await uploadResponse.json().catch(() => ({}));
+        throw new Error((uploadError as { error?: string }).error ?? "Audio upload failed");
+      }
+      const { url: audioUrl } = (await uploadResponse.json()) as { url: string };
+
+      setProgress(25);
 
       const formData = new FormData();
-      formData.append("audio", audioFile);
+      formData.append("audio_url", audioUrl);
       formData.append("preferences", JSON.stringify(sessionPreferences));
 
       // Credit system: attach user ID and video duration
@@ -811,7 +827,7 @@ export default function HomePage() {
         formData.append("source_duration_seconds", String(Math.ceil(videoDuration)));
       }
 
-      let progressValue = 20;
+      let progressValue = 25;
       const progressInterval = setInterval(() => {
         progressValue = Math.min(progressValue + 0.3, 92);
         setProgress(Math.floor(progressValue));

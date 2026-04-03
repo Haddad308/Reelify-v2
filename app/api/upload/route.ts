@@ -1,37 +1,53 @@
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+const ALLOWED_CONTENT_TYPES = new Set([
+  "audio/wav",
+  "audio/mpeg",
+  "audio/ogg",
+  "audio/opus",
+  "audio/webm",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "image/jpeg",
+]);
 
+const MAX_SIZE_BYTES = 1024 * 1024 * 1024; // 1 GB
+
+export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const jsonResponse = await handleUpload({
-      body,
-      request,
-      onBeforeGenerateToken: async () => {
-        // You can add authentication here if needed
-        return {
-          allowedContentTypes: [
-            "audio/wav",
-            "audio/mpeg",
-            "audio/ogg",
-            "video/mp4",
-            "video/quicktime",
-            "image/jpeg",
-          ],
-          maximumSizeInBytes: 1024 * 1024 * 1024, // 1GB max
-          addRandomSuffix: true,
-        };
-      },
-      onUploadCompleted: async ({ blob }) => {
-        console.log("Upload completed:", blob.url);
-      },
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
+
+    if (!file) {
+      return NextResponse.json({ error: "Missing file" }, { status: 400 });
+    }
+
+    if (file.size > MAX_SIZE_BYTES) {
+      return NextResponse.json({ error: "File too large (max 1 GB)" }, { status: 413 });
+    }
+
+    const contentType = file.type || "application/octet-stream";
+    if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
+      return NextResponse.json(
+        { error: `Content type not allowed: ${contentType}` },
+        { status: 415 }
+      );
+    }
+
+    const blob = await put(file.name, file, {
+      access: "private",
+      addRandomSuffix: true,
+      contentType,
     });
 
-    return NextResponse.json(jsonResponse);
+    console.log("[upload] Uploaded to blob:", blob.url);
+    return NextResponse.json({ url: blob.url });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    console.error("[upload] Upload failed:", error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

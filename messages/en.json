@@ -132,6 +132,7 @@
     "readingFile": "Reading video file...",
     "extractingAudio": "Extracting audio from video...",
     "waitingAnalysis": "Waiting for analysis to complete...",
+    "uploadingAudio": "Uploading audio for processing...",
     "analyzingContent": "Analyzing content and selecting the best clips...",
     "preparingClipsShort": "Preparing clips...",
     "videoNotReady": "Video is not ready yet. Please try again.",
