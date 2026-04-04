@@ -515,11 +515,15 @@
       "name": "Full name",
       "email": "Email",
       "phone": "Phone number",
+      "jobTitle": "Job title",
+      "companyName": "Company name",
       "help": "How will Reelify help you?",
       "placeholders": {
         "name": "Your name",
         "email": "you@company.com",
         "phone": "+1 555 000 0000",
+        "jobTitle": "e.g. Marketing Manager",
+        "companyName": "Your company",
         "help": "Example: We need 10 short clips per week from webinars."
       },
       "submit": "Submit request",

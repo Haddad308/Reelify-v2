@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { getSupabaseAdmin } from "../../../lib/supabase";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { name, email, phone, help_text, locale } = body ?? {};
+  const { name, email, phone, job_title, company_name, help_text, locale } = body ?? {};
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -24,14 +25,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }
 
+  // Pre-generate the UUID that will be used as the user's login ID upon approval
+  const reservedUserId = randomUUID();
+
   const supabase = getSupabaseAdmin();
   const { error } = await supabase.from("demo_requests").insert({
     name: name.trim(),
     email: emailValue,
     phone: phone.trim(),
+    job_title: typeof job_title === "string" ? job_title.trim() : "",
+    company_name: typeof company_name === "string" ? company_name.trim() : "",
     help_text: help_text.trim(),
     locale: typeof locale === "string" ? locale : null,
     status: "pending",
+    source: "Demo Request",
+    priority: "low",
+    credits_min: 180,
+    approved_user_id: reservedUserId,
   });
 
   if (error) {

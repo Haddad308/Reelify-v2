@@ -56,8 +56,22 @@ create table if not exists demo_requests (
   help_text text not null,
   locale text,
   status text not null default 'pending',
+  job_title text not null default '',
+  company_name text not null default '',
+  source text not null default 'Demo Request',
+  priority text not null default 'low',
+  credits_min integer not null default 180,
+  approved_user_id uuid,
   created_at timestamptz not null default now()
 );
+
+-- Run these if you already have a demo_requests table without the new columns:
+-- alter table demo_requests add column if not exists job_title text not null default '';
+-- alter table demo_requests add column if not exists company_name text not null default '';
+-- alter table demo_requests add column if not exists source text not null default 'Demo Request';
+-- alter table demo_requests add column if not exists priority text not null default 'low';
+-- alter table demo_requests add column if not exists credits_min integer not null default 180;
+-- alter table demo_requests add column if not exists approved_user_id uuid;
 
 create index if not exists idx_demo_requests_created_at on demo_requests(created_at desc);
 
