@@ -515,11 +515,15 @@
       "name": "الاسم الكامل",
       "email": "البريد الإلكتروني",
       "phone": "رقم الهاتف",
+      "jobTitle": "المسمى الوظيفي",
+      "companyName": "اسم الشركة",
       "help": "كيف سيساعدك Reelify؟",
       "placeholders": {
         "name": "اسمك الكامل",
         "email": "you@company.com",
         "phone": "+966 5X XXX XXXX",
+        "jobTitle": "مثال: مدير تسويق",
+        "companyName": "اسم شركتك",
         "help": "مثال: نحتاج 10 مقاطع أسبوعيًا من الندوات."
       },
       "submit": "إرسال الطلب",

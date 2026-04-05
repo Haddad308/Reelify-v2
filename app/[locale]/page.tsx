@@ -14,6 +14,8 @@ export default function LandingPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [helpText, setHelpText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -49,6 +51,8 @@ export default function LandingPage() {
           name: trimmedName,
           email: trimmedEmail,
           phone: trimmedPhone,
+          job_title: jobTitle.trim(),
+          company_name: companyName.trim(),
           help_text: trimmedHelp,
           locale,
         }),
@@ -63,6 +67,8 @@ export default function LandingPage() {
       setName("");
       setEmail("");
       setPhone("");
+      setJobTitle("");
+      setCompanyName("");
       setHelpText("");
     } catch (error) {
       const message = error instanceof Error ? error.message : t("form.errors.generic");
@@ -405,6 +411,41 @@ export default function LandingPage() {
                   placeholder={t("form.placeholders.email")}
                   required
                 />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label
+                    className="block text-xs font-semibold uppercase tracking-widest text-gray-400"
+                    htmlFor="jobTitle"
+                  >
+                    {t("form.jobTitle")}
+                  </label>
+                  <input
+                    id="jobTitle"
+                    type="text"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#f43f5e]/30 focus:border-[#f43f5e]/40 transition-all"
+                    placeholder={t("form.placeholders.jobTitle")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label
+                    className="block text-xs font-semibold uppercase tracking-widest text-gray-400"
+                    htmlFor="companyName"
+                  >
+                    {t("form.companyName")}
+                  </label>
+                  <input
+                    id="companyName"
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#f43f5e]/30 focus:border-[#f43f5e]/40 transition-all"
+                    placeholder={t("form.placeholders.companyName")}
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">

@@ -44,6 +44,12 @@ interface DemoRequest {
   help_text: string;
   locale: string | null;
   status: string;
+  job_title: string;
+  company_name: string;
+  source: string;
+  priority: string;
+  credits_min: number;
+  approved_user_id: string | null;
   created_at: string;
 }
 
@@ -102,6 +108,8 @@ export default function AdminDashboard() {
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoStatusFilter, setDemoStatusFilter] = useState<string>("all");
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
+  const [selectedDemoIds, setSelectedDemoIds] = useState<Set<string>>(new Set());
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   // Sorting & pagination – Users
   const [userSort, setUserSort] = useState<{ field: UserSortField; direction: SortDirection }>({
@@ -215,7 +223,117 @@ export default function AdminDashboard() {
     });
     posthog.capture("admin_demo_deleted", { id });
     if (expandedRequestId === id) setExpandedRequestId(null);
+    setSelectedDemoIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     await fetchDemoRequests();
+  };
+
+  // ── Approve demo request ───────────────────────────────────
+  const approveDemoRequest = async (id: string) => {
+    if (!confirm("Approve this request? A user account will be created automatically.")) return;
+    setApprovingId(id);
+    try {
+      const res = await fetch("/api/admin/demo-requests", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "Failed to approve request");
+        return;
+      }
+      posthog.capture("admin_demo_approved", { id, user_id: data.user?.id });
+      await fetchDemoRequests();
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  // ── Multi-select helpers ───────────────────────────────────
+  const toggleSelectDemo = (id: string) => {
+    setSelectedDemoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllDemo = () => {
+    if (selectedDemoIds.size === paginatedDemoRequests.length) {
+      setSelectedDemoIds(new Set());
+    } else {
+      setSelectedDemoIds(new Set(paginatedDemoRequests.map((r) => r.id)));
+    }
+  };
+
+  // ── CSV export ─────────────────────────────────────────────
+  const exportDemoCSV = () => {
+    const toExport = demoRequests.filter((r) => selectedDemoIds.has(r.id));
+    if (toExport.length === 0) return;
+
+    const csvEscape = (val: string) => `"${val.replace(/"/g, '""')}"`;
+
+    const headers_csv = [
+      "ID",
+      "First Name",
+      "Last Name",
+      "Mobile Number",
+      "Called?",
+      "WA?",
+      "Email?",
+      "Assignee",
+      "Source",
+      "Job Title",
+      "Priority",
+      "Notes",
+      "Company Name",
+      "Email Address",
+      "Whatsapp URL",
+      "Message",
+      "Scanned At",
+      "Replied?",
+    ];
+
+    const rows = toExport.map((req) => {
+      const exportId = req.approved_user_id ?? "";
+      const nameParts = req.name.trim().split(/\s+/);
+      const firstName = nameParts[0] ?? "";
+      const lastName = nameParts.slice(1).join(" ");
+      const waUrl = `https://web.whatsapp.com/send/?phone=${req.phone.replace(/\D/g, "")}&text&type=phone_number&app_absent=0`;
+      const message = `Hi ${firstName}! This is Youssef from Reelify. Here are your free credits to try out Reelify - turn your videos into reels in seconds using AI.\n\nYour User ID: ${exportId}\nLogin here: Reelify.cc/login\n\nKindly please fill this URL with your feedback https://forms.gle/uAjfaxf62qWagGV18 after you give it a spin!\n\nLooking forward!`;
+
+      return [
+        csvEscape(exportId),
+        csvEscape(firstName),
+        csvEscape(lastName),
+        csvEscape(req.phone),
+        "",
+        "",
+        "",
+        "",
+        csvEscape("Request Demo"),
+        csvEscape(req.job_title ?? ""),
+        csvEscape(req.priority ?? ""),
+        "",
+        csvEscape(req.company_name ?? ""),
+        csvEscape(req.email),
+        csvEscape(waUrl),
+        csvEscape(message),
+        "",
+        "",
+      ].join(",");
+    });
+
+    const csvContent = [headers_csv.map(csvEscape).join(","), ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `demo-requests-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // ── Usage events for a user ──────────────────────────────────
@@ -1210,7 +1328,12 @@ export default function AdminDashboard() {
             {/* Demo requests table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-semibold text-gray-900">Demo Requests</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-semibold text-gray-900">Demo Requests</h2>
+                  {selectedDemoIds.size > 0 && (
+                    <span className="text-xs text-gray-500">{selectedDemoIds.size} selected</span>
+                  )}
+                </div>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
                   <div className="relative w-full sm:w-64">
                     <input
@@ -1243,6 +1366,17 @@ export default function AdminDashboard() {
                       </button>
                     ))}
                   </div>
+                  {selectedDemoIds.size > 0 && (
+                    <button
+                      onClick={exportDemoCSV}
+                      className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Export CSV ({selectedDemoIds.size})
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1260,6 +1394,15 @@ export default function AdminDashboard() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                          <th className="px-4 py-3 w-10">
+                            <input
+                              type="checkbox"
+                              checked={paginatedDemoRequests.length > 0 && paginatedDemoRequests.every((r) => selectedDemoIds.has(r.id))}
+                              onChange={toggleSelectAllDemo}
+                              className="rounded border-gray-300 text-pink-500 focus:ring-pink-400"
+                              title="Select all on this page"
+                            />
+                          </th>
                           <th className="px-6 py-3">
                             <button
                               type="button"
@@ -1296,18 +1439,8 @@ export default function AdminDashboard() {
                               )}
                             </button>
                           </th>
-                          <th className="px-6 py-3">
-                            <button
-                              type="button"
-                              onClick={() => handleDemoSort("locale")}
-                              className="flex items-center gap-1"
-                            >
-                              Locale
-                              {demoSort.field === "locale" && (
-                                <span>{demoSort.direction === "asc" ? "▲" : "▼"}</span>
-                              )}
-                            </button>
-                          </th>
+                          <th className="px-6 py-3 hidden lg:table-cell">Job Title</th>
+                          <th className="px-6 py-3 hidden lg:table-cell">Company</th>
                           <th className="px-6 py-3">
                             <button
                               type="button"
@@ -1342,15 +1475,29 @@ export default function AdminDashboard() {
                               key={req.id}
                               className={`hover:bg-gray-50 transition-colors cursor-pointer ${
                                 expandedRequestId === req.id ? "bg-pink-50" : ""
-                              }`}
+                              } ${selectedDemoIds.has(req.id) ? "bg-blue-50/50" : ""}`}
                               onClick={() =>
                                 setExpandedRequestId(
                                   expandedRequestId === req.id ? null : req.id
                                 )
                               }
                             >
+                              <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedDemoIds.has(req.id)}
+                                  onChange={() => toggleSelectDemo(req.id)}
+                                  className="rounded border-gray-300 text-pink-500 focus:ring-pink-400"
+                                />
+                              </td>
                               <td className="px-6 py-4">
                                 <div className="font-medium text-gray-900">{req.name}</div>
+                                {req.status === "converted" && (
+                                  <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium mt-0.5">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                    Approved
+                                  </span>
+                                )}
                               </td>
                               <td className="px-6 py-4">
                                 <a
@@ -1370,8 +1517,11 @@ export default function AdminDashboard() {
                                   {req.phone}
                                 </a>
                               </td>
-                              <td className="px-6 py-4 text-gray-500 text-xs uppercase">
-                                {req.locale ?? "—"}
+                              <td className="px-6 py-4 text-gray-500 text-xs hidden lg:table-cell">
+                                {req.job_title || "—"}
+                              </td>
+                              <td className="px-6 py-4 text-gray-500 text-xs hidden lg:table-cell">
+                                {req.company_name || "—"}
                               </td>
                               <td className="px-6 py-4">
                                 <select
@@ -1392,29 +1542,46 @@ export default function AdminDashboard() {
                               <td className="px-6 py-4 text-gray-500 text-xs">
                                 {formatDate(req.created_at)}
                               </td>
-                              <td className="px-6 py-4 text-right">
+                              <td className="px-6 py-4 text-right space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                                {req.status !== "converted" ? (
+                                  <button
+                                    onClick={() => approveDemoRequest(req.id)}
+                                    disabled={approvingId === req.id}
+                                    className="px-3 py-1 text-xs rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                                  >
+                                    {approvingId === req.id ? "..." : "Approve"}
+                                  </button>
+                                ) : (
+                                  <span className="px-3 py-1 text-xs rounded-lg bg-emerald-100 text-emerald-700 font-medium">
+                                    Approved
+                                  </span>
+                                )}
                                 <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteDemoRequest(req.id);
-                                  }}
+                                  onClick={() => deleteDemoRequest(req.id)}
                                   className="px-3 py-1 text-xs rounded-lg text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
                                 >
                                   Delete
                                 </button>
                               </td>
                             </tr>
-                            {/* Expanded help text row */}
+                            {/* Expanded detail row */}
                             {expandedRequestId === req.id && (
                               <tr key={`${req.id}-detail`}>
-                                <td colSpan={7} className="px-6 py-4 bg-gray-50">
-                                  <div className="space-y-1">
-                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Message
-                                    </p>
-                                    <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-                                      {req.help_text}
-                                    </p>
+                                <td colSpan={9} className="px-6 py-4 bg-gray-50">
+                                  <div className="space-y-3">
+                                    {req.help_text && (
+                                      <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Message</p>
+                                        <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{req.help_text}</p>
+                                      </div>
+                                    )}
+                                    <div className="flex flex-wrap gap-6 text-xs text-gray-500">
+                                      {req.priority && <span><span className="font-medium text-gray-700">Priority:</span> {req.priority}</span>}
+                                      {req.source && <span><span className="font-medium text-gray-700">Source:</span> {req.source}</span>}
+                                      <span><span className="font-medium text-gray-700">Credits min:</span> {req.credits_min ?? 180}</span>
+                                      {req.locale && <span><span className="font-medium text-gray-700">Locale:</span> {req.locale.toUpperCase()}</span>}
+                                      {req.approved_user_id && <span><span className="font-medium text-gray-700">User ID:</span> <span className="font-mono">{req.approved_user_id}</span></span>}
+                                    </div>
                                   </div>
                                 </td>
                               </tr>
