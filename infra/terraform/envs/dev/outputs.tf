@@ -22,3 +22,33 @@ output "media_kms_key_arn" {
   description = "KMS key protecting media at rest."
   value       = module.storage.kms_key_arn
 }
+
+output "secret_arns" {
+  description = "Secrets Manager ARNs (containers; values set out-of-band)."
+  value       = module.secrets.secret_arns
+}
+
+output "secrets_kms_key_arn" {
+  description = "KMS key protecting secrets."
+  value       = module.secrets.kms_key_arn
+}
+
+output "queue_urls" {
+  description = "SQS work queue URLs by class."
+  value       = module.queue.queue_urls
+}
+
+output "dlq_urls" {
+  description = "SQS dead-letter queue URLs by class."
+  value       = module.queue.dlq_urls
+}
+
+output "execution_role_arn" {
+  description = "Shared ECS task execution role ARN."
+  value       = module.iam.execution_role_arn
+}
+
+output "task_role_arns" {
+  description = "Per-service ECS task role ARNs."
+  value       = module.iam.task_role_arns
+}

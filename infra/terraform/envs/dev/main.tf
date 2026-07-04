@@ -26,3 +26,29 @@ module "storage" {
   # Dev convenience: allow `terraform destroy` to remove a non-empty bucket.
   force_destroy = true
 }
+
+module "secrets" {
+  source = "../../modules/secrets"
+
+  name        = local.name
+  env         = var.env
+  data_region = var.data_region
+  # Values are set out-of-band via `aws secretsmanager put-secret-value`.
+}
+
+module "queue" {
+  source = "../../modules/queue"
+
+  name = local.name
+}
+
+module "iam" {
+  source = "../../modules/iam"
+
+  name                = local.name
+  media_bucket_arn    = module.storage.bucket_arn
+  media_kms_key_arn   = module.storage.kms_key_arn
+  secrets_kms_key_arn = module.secrets.kms_key_arn
+  secret_arns         = module.secrets.secret_arns
+  queue_arns          = module.queue.queue_arns
+}
