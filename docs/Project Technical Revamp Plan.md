@@ -2,9 +2,9 @@
 
 Reelify should move all FFmpeg work out of the browser and into an asynchronous backend media-processing pipeline. The browser should only upload source videos directly to private object storage, create or confirm a durable processing job, and display persistent job progress and results.
 
-**Primary recommendation:** use a hybrid AWS architecture:
+**Primary recommendation:** use a fully AWS-hosted architecture:
 
-- Keep the web application on Vercel or another frontend host.
+- Host the web application on AWS as a containerized Next.js app on ECS Fargate behind CloudFront (no Vercel).
 - Host the API/control plane as a lightweight AWS service.
 - Store source video and derived media in Amazon S3.
 - Use PostgreSQL as the source of truth for tenants, workspaces, videos, jobs, transcripts, and clip candidates.
@@ -36,7 +36,7 @@ Object storage holds large artifacts.
 | Area                       | Planning assumption                                                                                                                                                                                                    |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Primary cloud              | AWS, region-aware from day one: launch in one primary data region (likely `us-east-1` or `us-west-2` if most early customers are in the U.S.); expand to regional data planes later without changing core architecture |
-| Frontend                   | Existing web application can remain on Vercel                                                                                                                                                                          |
+| Frontend                   | Existing web application is migrated off Vercel to AWS: containerized Next.js on ECS Fargate behind CloudFront (Amplify Hosting or OpenNext-on-Lambda are managed alternatives)                                                                                                                                                                          |
 | Database                   | PostgreSQL is the authoritative transactional datastore                                                                                                                                                                |
 | Video size                 | Typical source file: 3–5 GB                                                                                                                                                                                            |
 | Video duration             | Sensitivity analysis covers 60, 90, 120, and 180 minutes                                                                                                                                                               |
@@ -78,7 +78,7 @@ Use a **hybrid architecture with a lightweight web/API control plane and isolate
 
 | Component                      | Recommendation                                                                            | Why                                                                                    |
 | ------------------------------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Web application                | Vercel-hosted Next.js or equivalent                                                       | Fast iteration, existing compatibility, static delivery, browser-facing UX             |
+| Web application                | AWS-hosted Next.js: container on ECS Fargate + CloudFront                                                       | Same AWS account, Terraform, and observability as the rest of the platform; static/edge delivery via CloudFront; no Vercel lock-in             |
 | Authentication                 | Cognito, Auth0, Clerk, or WorkOS                                                          | Managed login, MFA, future SSO support; Reelify still enforces workspace authorization |
 | API/control plane              | ECS Fargate service behind API Gateway or ALB; Lambda is acceptable for smaller endpoints | Lightweight, horizontally scalable, does not run FFmpeg                                |
 | Relational database            | Amazon RDS PostgreSQL, Multi-AZ in production                                             | Strong transactions, relational tenant model, reliable job state                       |
@@ -96,6 +96,16 @@ Use a **hybrid architecture with a lightweight web/API control plane and isolate
 
 
 
+
+## Frontend hosting on AWS
+
+The web application runs on AWS, not Vercel. Host it in the same AWS account, Terraform codebase, and observability stack as the API and workers so nothing depends on Vercel.
+
+- **Primary recommendation — Next.js container on ECS Fargate + CloudFront.** Build the app with `output: "standalone"`, run it as a Fargate service, and front it with CloudFront (TLS, caching of `/_next/static` and public assets, and AWS WAF). This keeps full control of the Next.js runtime version and reuses the existing container, ECR, autoscaling, and IaC patterns.
+- **Managed alternative — AWS Amplify Hosting.** Closest to the previous Vercel developer experience (git-based CI/CD, managed SSR + CDN) and provisionable in Terraform (`aws_amplify_app`). Trades runtime control for lower operational overhead; confirm current Next.js version support before adopting.
+- **Serverless alternative — OpenNext on Lambda + CloudFront.** A Vercel-like serverless SSR topology for teams that prefer per-request scaling over an always-on container.
+
+Whichever option is chosen, edge delivery and caching go through CloudFront and the frontend is provisioned entirely in Terraform with no Vercel dependency.
 
 ## Why this is the best fit
 
@@ -250,7 +260,8 @@ Do not promise “data never leaves the U.K.” or similar wording until every d
 ```mermaid
 flowchart LR
     U[Agency User Browser]
-    W[Vercel Web Application]
+    CDN[CloudFront CDN + WAF]
+    W[Web App<br/>Next.js on ECS Fargate]
 
     AUTH[Identity Provider<br/>Cognito/Auth0/Clerk]
     API[Reelify API / Control Plane<br/>API Gateway + ECS Fargate]
@@ -273,7 +284,8 @@ flowchart LR
     SEC[Secrets Manager + KMS]
     AUDIT[Usage Ledger + Audit Log]
 
-    U --> W
+    U --> CDN
+    CDN --> W
     W --> AUTH
     W --> API
 
@@ -1868,7 +1880,7 @@ CloudWatch logging/metrics costs
 ElevenLabs Scribe pricing
 Gemini token pricing
 Authentication-provider pricing
-Vercel pricing
+Frontend hosting (CloudFront + Next.js on ECS Fargate, or AWS Amplify Hosting)
 ```
 
 
@@ -2027,7 +2039,7 @@ enterprise SSO and audit requirements
 
 | Cost type              | Examples                                                                           |
 | ---------------------- | ---------------------------------------------------------------------------------- |
-| Fixed platform cost    | Database baseline, API service baseline, monitoring baseline, WAF, backup baseline |
+| Fixed platform cost    | Database baseline, API and web (Next.js on Fargate) service baselines, CloudFront + monitoring baseline, WAF, backup baseline |
 | Variable per video     | FFmpeg task time, transcription, scoring, queue operations                         |
 | Variable per minute    | Transcription and AI scoring                                                       |
 | Variable per stored GB | S3 source/derived media retention                                                  |
@@ -2128,6 +2140,7 @@ The goal should not be to price according to cloud cost alone. Reelify replaces 
 
 ### Build
 
+- Web application hosted on AWS: containerized Next.js on ECS Fargate behind CloudFront (no Vercel).
 - Private S3 bucket in one primary U.S. data region.
 - S3 multipart uploads with server-side region/bucket routing from agency `data_region`.
 - `agencies` table with immutable `data_region` (default `"us"` for all launch tenants).
