@@ -52,3 +52,18 @@ module "iam" {
   secret_arns         = module.secrets.secret_arns
   queue_arns          = module.queue.queue_arns
 }
+
+module "database" {
+  source = "../../modules/database"
+
+  name       = local.name
+  aws_region = var.aws_region
+  vpc_id     = module.network.vpc_id
+  vpc_cidr   = var.vpc_cidr
+  subnet_ids = module.network.private_subnet_ids
+
+  # Dev sizing: smallest burstable instance, single-AZ, no proxy (app pools).
+  instance_class = var.db_instance_class
+  multi_az       = false
+  enable_proxy   = false
+}

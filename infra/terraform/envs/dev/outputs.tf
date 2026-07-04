@@ -52,3 +52,23 @@ output "task_role_arns" {
   description = "Per-service ECS task role ARNs."
   value       = module.iam.task_role_arns
 }
+
+output "db_endpoint" {
+  description = "RDS connection endpoint."
+  value       = module.database.endpoint
+}
+
+output "db_port" {
+  description = "RDS port."
+  value       = module.database.port
+}
+
+output "db_name" {
+  description = "RDS initial database name."
+  value       = module.database.db_name
+}
+
+output "db_master_user_secret_arn" {
+  description = "ARN of the RDS-managed master credentials secret."
+  value       = module.database.master_user_secret_arn
+}

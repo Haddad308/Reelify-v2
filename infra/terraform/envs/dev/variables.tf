@@ -45,3 +45,9 @@ variable "cors_allowed_origins" {
   type        = list(string)
   default     = ["http://localhost:3000", "https://reelify.cc"]
 }
+
+variable "db_instance_class" {
+  description = "RDS instance class for dev."
+  type        = string
+  default     = "db.t4g.micro"
+}
