@@ -12,3 +12,31 @@ data/temp-audio/
 .env.sentry-build-plugin
 
 raw-videos-samples
+
+# AWS CLI installer / stray downloads
+AWSCLIV2.pkg
+*.pkg
+
+# ===========================================
+# Terraform
+# ===========================================
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.example.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+.terraform.lock.hcl.backup
+
+# Local build artifacts for services/workers
+dist/
+build/
+*.tsbuildinfo
