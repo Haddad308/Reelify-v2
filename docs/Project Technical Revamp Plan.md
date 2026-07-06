@@ -36,7 +36,7 @@ Object storage holds large artifacts.
 | Area                       | Planning assumption                                                                                                                                                                                                    |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Primary cloud              | AWS, region-aware from day one: launch in one primary data region (likely `us-east-1` or `us-west-2` if most early customers are in the U.S.); expand to regional data planes later without changing core architecture |
-| Frontend                   | Existing web application is migrated off Vercel to AWS: containerized Next.js on ECS Fargate behind CloudFront (Amplify Hosting or OpenNext-on-Lambda are managed alternatives)                                                                                                                                                                          |
+| Frontend                   | Existing web application is migrated off Vercel to AWS: containerized Next.js on ECS Fargate behind CloudFront (Amplify Hosting or OpenNext-on-Lambda are managed alternatives)                                        |
 | Database                   | PostgreSQL is the authoritative transactional datastore                                                                                                                                                                |
 | Video size                 | Typical source file: 3–5 GB                                                                                                                                                                                            |
 | Video duration             | Sensitivity analysis covers 60, 90, 120, and 180 minutes                                                                                                                                                               |
@@ -76,23 +76,23 @@ Use a **hybrid architecture with a lightweight web/API control plane and isolate
 ## Recommended service layout
 
 
-| Component                      | Recommendation                                                                            | Why                                                                                    |
-| ------------------------------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Web application                | AWS-hosted Next.js: container on ECS Fargate + CloudFront                                                       | Same AWS account, Terraform, and observability as the rest of the platform; static/edge delivery via CloudFront; no Vercel lock-in             |
-| Authentication                 | Cognito, Auth0, Clerk, or WorkOS                                                          | Managed login, MFA, future SSO support; Reelify still enforces workspace authorization |
-| API/control plane              | ECS Fargate service behind API Gateway or ALB; Lambda is acceptable for smaller endpoints | Lightweight, horizontally scalable, does not run FFmpeg                                |
-| Relational database            | Amazon RDS PostgreSQL, Multi-AZ in production                                             | Strong transactions, relational tenant model, reliable job state                       |
-| Database connection management | RDS Proxy or pooled application connections                                               | Avoids connection storms and improves failure recovery                                 |
-| Object storage                 | Amazon S3 with private buckets                                                            | Durable, scalable, multipart upload, lifecycle controls                                |
-| Upload layer                   | S3 multipart upload with short-lived signed URLs                                          | Supports resumable uploads without proxying 3–5 GB videos through Reelify servers      |
-| Durable queue                  | Amazon SQS Standard plus DLQ                                                              | Cheap buffering, at-least-once delivery, resilient retries                             |
-| Workflow persistence           | PostgreSQL job state plus transactional outbox                                            | Prevents queue/database dual-write inconsistencies                                     |
-| FFmpeg workers                 | ECS Fargate tasks, one video per task                                                     | Long-running containers, CPU/disk control, no browser dependency                       |
-| AI integration workers         | Small Fargate tasks or Lambda-based integration workers                                   | Keeps expensive FFmpeg capacity separate from API polling and provider calls           |
-| Observability                  | OpenTelemetry, CloudWatch, managed metrics/logging, optional Sentry                       | Job-level troubleshooting, cost and error visibility                                   |
-| Secrets                        | AWS Secrets Manager plus KMS                                                              | Central rotation, task-role retrieval, no secrets in frontend                          |
-| Infrastructure as code         | Terraform, Pulumi, or AWS CDK                                                             | Reproducible environments, reviewable changes                                          |
-| Billing/metering               | Immutable usage-event ledger plus monthly aggregates                                      | Supports included credits, overages, agency-level cost visibility                      |
+| Component                      | Recommendation                                                                            | Why                                                                                                                                |
+| ------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Web application                | AWS-hosted Next.js: container on ECS Fargate + CloudFront                                 | Same AWS account, Terraform, and observability as the rest of the platform; static/edge delivery via CloudFront; no Vercel lock-in |
+| Authentication                 | Cognito, Auth0, Clerk, or WorkOS                                                          | Managed login, MFA, future SSO support; Reelify still enforces workspace authorization                                             |
+| API/control plane              | ECS Fargate service behind API Gateway or ALB; Lambda is acceptable for smaller endpoints | Lightweight, horizontally scalable, does not run FFmpeg                                                                            |
+| Relational database            | Amazon RDS PostgreSQL, Multi-AZ in production                                             | Strong transactions, relational tenant model, reliable job state                                                                   |
+| Database connection management | RDS Proxy or pooled application connections                                               | Avoids connection storms and improves failure recovery                                                                             |
+| Object storage                 | Amazon S3 with private buckets                                                            | Durable, scalable, multipart upload, lifecycle controls                                                                            |
+| Upload layer                   | S3 multipart upload with short-lived signed URLs                                          | Supports resumable uploads without proxying 3–5 GB videos through Reelify servers                                                  |
+| Durable queue                  | Amazon SQS Standard plus DLQ                                                              | Cheap buffering, at-least-once delivery, resilient retries                                                                         |
+| Workflow persistence           | PostgreSQL job state plus transactional outbox                                            | Prevents queue/database dual-write inconsistencies                                                                                 |
+| FFmpeg workers                 | ECS Fargate tasks, one video per task                                                     | Long-running containers, CPU/disk control, no browser dependency                                                                   |
+| AI integration workers         | Small Fargate tasks or Lambda-based integration workers                                   | Keeps expensive FFmpeg capacity separate from API polling and provider calls                                                       |
+| Observability                  | OpenTelemetry, CloudWatch, managed metrics/logging, optional Sentry                       | Job-level troubleshooting, cost and error visibility                                                                               |
+| Secrets                        | AWS Secrets Manager plus KMS                                                              | Central rotation, task-role retrieval, no secrets in frontend                                                                      |
+| Infrastructure as code         | Terraform, Pulumi, or AWS CDK                                                             | Reproducible environments, reviewable changes                                                                                      |
+| Billing/metering               | Immutable usage-event ledger plus monthly aggregates                                      | Supports included credits, overages, agency-level cost visibility                                                                  |
 
 
 
@@ -2037,14 +2037,14 @@ enterprise SSO and audit requirements
 ## Fixed versus variable cost
 
 
-| Cost type              | Examples                                                                           |
-| ---------------------- | ---------------------------------------------------------------------------------- |
+| Cost type              | Examples                                                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Fixed platform cost    | Database baseline, API and web (Next.js on Fargate) service baselines, CloudFront + monitoring baseline, WAF, backup baseline |
-| Variable per video     | FFmpeg task time, transcription, scoring, queue operations                         |
-| Variable per minute    | Transcription and AI scoring                                                       |
-| Variable per stored GB | S3 source/derived media retention                                                  |
-| Variable per tenant    | Support, billing, SSO, audit, plan-level service overhead                          |
-| Variable per export    | Future clip rendering, captions, egress                                            |
+| Variable per video     | FFmpeg task time, transcription, scoring, queue operations                                                                    |
+| Variable per minute    | Transcription and AI scoring                                                                                                  |
+| Variable per stored GB | S3 source/derived media retention                                                                                             |
+| Variable per tenant    | Support, billing, SSO, audit, plan-level service overhead                                                                     |
+| Variable per export    | Future clip rendering, captions, egress                                                                                       |
 
 
 
@@ -2344,7 +2344,7 @@ Operational intervention rate
 3. **Retention economics**
   Persistent 3–5 GB source videos can create meaningful storage costs over time, especially when agencies keep large back catalogs.
 4. **Third-party outage dependence**
-  Reelify should degrade gracefully: preserve completed stages, pause safely, communicate delays, and retry later.
+  Reelify should degrade gracefully: preserve completed stprages, pause safely, communicate delays, and retry later.
 5. **Tenant fairness**
   Without per-agency limits and scheduling controls, a few large agencies can create poor experience for everyone else.
 6. **Data privacy and regional commitments**
