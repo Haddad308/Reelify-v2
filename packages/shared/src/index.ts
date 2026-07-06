@@ -3,6 +3,7 @@
 
 export * from "./ids";
 export * from "./idempotency";
+export * from "./prismaErrors";
 export * from "./retry";
 export * from "./telemetry/logger";
 export * from "./queue/messages";
