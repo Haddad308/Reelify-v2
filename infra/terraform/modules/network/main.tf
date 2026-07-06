@@ -10,7 +10,7 @@ data "aws_availability_zones" "available" {
 
 locals {
   azs       = slice(data.aws_availability_zones.available.names, 0, var.az_count)
-  nat_count = var.single_nat_gateway ? 1 : var.az_count
+  nat_count = var.create_nat_gateway ? (var.single_nat_gateway ? 1 : var.az_count) : 0
 
   common_tags = merge(var.tags, {
     component = "network"
@@ -117,9 +117,14 @@ resource "aws_route_table" "private" {
   count  = var.az_count
   vpc_id = aws_vpc.this.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.this[var.single_nat_gateway ? 0 : count.index].id
+  # Default route to NAT only when NAT exists; in the lean pilot RDS lives here
+  # and needs no internet egress (Fargate runs in public subnets instead).
+  dynamic "route" {
+    for_each = var.create_nat_gateway ? [1] : []
+    content {
+      cidr_block     = "0.0.0.0/0"
+      nat_gateway_id = aws_nat_gateway.this[var.single_nat_gateway ? 0 : count.index].id
+    }
   }
 
   tags = merge(local.common_tags, {

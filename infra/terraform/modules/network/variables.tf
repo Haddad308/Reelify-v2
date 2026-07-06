@@ -25,8 +25,14 @@ variable "az_count" {
   }
 }
 
+variable "create_nat_gateway" {
+  description = "Create NAT gateway(s). Set false for a cost-lean pilot where Fargate runs in public subnets (no private egress; RDS needs none)."
+  type        = bool
+  default     = true
+}
+
 variable "single_nat_gateway" {
-  description = "Use one shared NAT gateway (cheaper, dev) instead of one per AZ (HA, prod)."
+  description = "Use one shared NAT gateway (cheaper) instead of one per AZ (HA). Only applies when create_nat_gateway = true."
   type        = bool
   default     = true
 }

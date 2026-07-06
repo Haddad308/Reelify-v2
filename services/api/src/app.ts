@@ -7,6 +7,7 @@ import { ApiError } from "./errors";
 import { registerHealthRoutes } from "./routes/health";
 import { registerJobRoutes } from "./routes/jobs";
 import { registerUploadRoutes } from "./routes/uploads";
+import { registerVideoRoutes } from "./routes/videos";
 import type { MediaStorage } from "./storage";
 
 export interface AppDeps {
@@ -37,5 +38,6 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerHealthRoutes(app);
   registerUploadRoutes(app, deps);
   registerJobRoutes(app, deps);
+  registerVideoRoutes(app, deps);
   return app;
 }
