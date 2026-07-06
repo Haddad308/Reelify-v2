@@ -66,4 +66,7 @@ module "database" {
   instance_class = var.db_instance_class
   multi_az       = false
   enable_proxy   = false
+
+  # AWS "Free" account plan caps backup retention; keep dev minimal.
+  backup_retention_days = 1
 }
