@@ -2,6 +2,12 @@
   "name": "reelify",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "workers/*",
+    "db"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

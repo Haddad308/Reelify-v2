@@ -40,3 +40,6 @@ terraform.rc
 dist/
 build/
 *.tsbuildinfo
+
+# Prisma generated client (regenerated from schema.prisma)
+db/generated/
