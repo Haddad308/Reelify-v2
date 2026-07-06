@@ -6,6 +6,7 @@ export * from "./idempotency";
 export * from "./retry";
 export * from "./telemetry/logger";
 export * from "./queue/messages";
+export * from "./queue/consumer";
 export * from "./providers/types";
 export * from "./providers/scoring/clipSelection";
 export * from "./providers/scoring/gemini";
