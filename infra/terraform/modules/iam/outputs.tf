@@ -12,5 +12,6 @@ output "task_role_arns" {
     ffmpeg        = aws_iam_role.ffmpeg.arn
     transcription = aws_iam_role.transcription.arn
     scoring       = aws_iam_role.scoring.arn
+    light         = aws_iam_role.light.arn
   }
 }

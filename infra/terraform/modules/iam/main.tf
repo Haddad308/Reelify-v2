@@ -239,6 +239,52 @@ resource "aws_iam_role_policy" "transcription" {
   policy = data.aws_iam_policy_document.transcription.json
 }
 
+# ---- light worker (pilot): dispatcher + transcription + scoring co-located ----
+data "aws_iam_policy_document" "light" {
+  statement {
+    sid       = "SendToWorkQueues"
+    actions   = ["sqs:SendMessage", "sqs:GetQueueUrl", "sqs:GetQueueAttributes"]
+    resources = values(var.queue_arns)
+  }
+  statement {
+    sid       = "ConsumeTranscriptionAndScoring"
+    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes", "sqs:ChangeMessageVisibility"]
+    resources = [var.queue_arns["transcription"], var.queue_arns["scoring"]]
+  }
+  statement {
+    sid       = "ReadAudio"
+    actions   = ["s3:GetObject"]
+    resources = [local.s3_object_arn]
+  }
+  statement {
+    sid       = "MediaKms"
+    actions   = ["kms:Decrypt"]
+    resources = [var.media_kms_key_arn]
+  }
+  statement {
+    sid       = "ProviderAndDbSecrets"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = compact([local.el_secret_arn, local.gm_secret_arn, local.db_secret_arn])
+  }
+  statement {
+    sid       = "DecryptSecrets"
+    actions   = ["kms:Decrypt"]
+    resources = [var.secrets_kms_key_arn]
+  }
+}
+
+resource "aws_iam_role" "light" {
+  name               = "${var.name}-task-light"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume.json
+  tags               = merge(local.common_tags, { role = "light" })
+}
+
+resource "aws_iam_role_policy" "light" {
+  name   = "${var.name}-light"
+  role   = aws_iam_role.light.id
+  policy = data.aws_iam_policy_document.light.json
+}
+
 # ---- scoring worker: consume scoring queue; Gemini key; db --------------------
 data "aws_iam_policy_document" "scoring" {
   statement {
