@@ -1,8 +1,9 @@
 /**
- * Typed browser client for the Reelify AWS backend API (pilot).
+ * Typed browser client for the Reelify AWS control-plane API.
  *
- * Self-contained: this file has no dependencies on the rest of the app and is
- * only consumed by the Studio pilot page (`app/[locale]/studio/page.tsx`).
+ * Reference implementation for the frontend integration — see
+ * `docs/FRONTEND_INTEGRATION_GUIDE.md`. Safe to import from app pages/hooks;
+ * no dependency on legacy Supabase or FFmpeg routes.
  *
  * Contract (base = NEXT_PUBLIC_API_BASE):
  *  - POST /v1/workspaces/{workspaceId}/upload-sessions
