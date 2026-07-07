@@ -41,3 +41,15 @@ output "secret_arns" {
 output "certificate_arn" {
   value = module.dns.certificate_arn
 }
+
+output "cognito_user_pool_id" {
+  value = var.enable_cognito ? module.cognito[0].user_pool_id : ""
+}
+
+output "cognito_client_id" {
+  value = var.enable_cognito ? module.cognito[0].client_id : ""
+}
+
+output "cognito_hosted_ui_domain" {
+  value = var.enable_cognito ? module.cognito[0].hosted_ui_domain : ""
+}

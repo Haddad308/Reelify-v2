@@ -7,8 +7,11 @@
 ###############################################################################
 
 locals {
-  common_tags   = merge(var.tags, { component = "edge" })
-  https_enabled = var.certificate_arn != ""
+  common_tags = merge(var.tags, { component = "edge" })
+  # Static (plan-time) toggle. Do NOT derive from certificate_arn: that ARN is
+  # known-only-after-apply when the cert is created in the same run, which
+  # cannot be used in count/for_each.
+  https_enabled = var.enable_https
 }
 
 resource "aws_security_group" "alb" {
@@ -89,22 +92,30 @@ resource "aws_lb_target_group" "web" {
 }
 
 # HTTP listener: redirect to HTTPS when a cert exists, else serve directly.
+# Two mutually-exclusive default_action blocks (exactly one renders) so the
+# redirect variant never sets target_group_arn (which the provider rejects).
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
 
-  default_action {
-    type             = local.https_enabled ? "redirect" : "forward"
-    target_group_arn = local.https_enabled ? null : aws_lb_target_group.web.arn
-
-    dynamic "redirect" {
-      for_each = local.https_enabled ? [1] : []
-      content {
+  dynamic "default_action" {
+    for_each = local.https_enabled ? [1] : []
+    content {
+      type = "redirect"
+      redirect {
         port        = "443"
         protocol    = "HTTPS"
         status_code = "HTTP_301"
       }
+    }
+  }
+
+  dynamic "default_action" {
+    for_each = local.https_enabled ? [] : [1]
+    content {
+      type             = "forward"
+      target_group_arn = aws_lb_target_group.web.arn
     }
   }
 }

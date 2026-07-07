@@ -86,3 +86,41 @@ variable "gemini_model" {
   type    = string
   default = "gemini-2.5-pro"
 }
+
+# ---- Cognito ----------------------------------------------------------------
+variable "enable_cognito" {
+  description = "Create the Cognito user pool + app client + hosted UI domain."
+  type        = bool
+  default     = false
+}
+
+variable "cognito_domain_prefix" {
+  description = "Globally-unique prefix for the Cognito hosted-UI domain (<prefix>.auth.<region>.amazoncognito.com)."
+  type        = string
+  default     = "reelify-auth"
+}
+
+variable "cognito_callback_urls" {
+  description = "Allowed OAuth callback URLs for the hosted UI."
+  type        = list(string)
+  default     = ["https://reelify.cc/en/app", "https://www.reelify.cc/en/app", "http://localhost:3000/en/app"]
+}
+
+variable "cognito_logout_urls" {
+  description = "Allowed sign-out URLs for the hosted UI."
+  type        = list(string)
+  default     = ["https://reelify.cc", "https://www.reelify.cc", "http://localhost:3000"]
+}
+
+# ---- Ops --------------------------------------------------------------------
+variable "budget_limit_usd" {
+  description = "Monthly cost budget in USD."
+  type        = number
+  default     = 60
+}
+
+variable "budget_alert_email" {
+  description = "Email for budget threshold alerts (80/100/120%). Empty = budget tracked but no email."
+  type        = string
+  default     = ""
+}

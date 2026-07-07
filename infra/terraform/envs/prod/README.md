@@ -15,7 +15,7 @@ terraform apply
 #  -> note outputs: ecr_backend_url, route53_nameservers, alb_dns_name
 
 # Phase 2 — build & push the backend image, then bring up ECS
-#  docker build -f Dockerfile.backend -t <ecr_backend_url>:latest .
+#  docker build --platform linux/amd64 -f Dockerfile.backend -t <ecr_backend_url>:latest .
 #  (docker login to ECR; docker push)
 terraform apply -var="backend_image=<ecr_backend_url>:latest"
 #  -> test: curl http://<alb_dns_name>/v1/healthz

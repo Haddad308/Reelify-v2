@@ -184,7 +184,7 @@ resource "aws_ecs_task_definition" "light" {
     image     = var.backend_image
     essential = true
     command = ["sh", "-c",
-      "npm run -w @reelify/outbox-dispatcher start & npm run -w @reelify/transcription-worker start & npm run -w @reelify/scoring-worker start & wait -n"
+      "npm run -w @reelify/outbox-dispatcher start & npm run -w @reelify/transcription-worker start & npm run -w @reelify/scoring-worker start & wait"
     ]
     environment = concat(local.base_env, [
       { name = "SQS_EXTRACTION_QUEUE_URL", value = var.queue_urls["extraction"] },

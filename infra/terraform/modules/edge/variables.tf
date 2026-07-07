@@ -37,8 +37,14 @@ variable "web_health_path" {
   default     = "/"
 }
 
+variable "enable_https" {
+  description = "Static toggle for the HTTPS listener. Kept separate from certificate_arn because that value is known-only-after-apply (an ACM cert created in the same run), which cannot drive count/for_each."
+  type        = bool
+  default     = false
+}
+
 variable "certificate_arn" {
-  description = "ACM cert ARN for HTTPS. Empty = HTTP only (pre-domain testing)."
+  description = "ACM cert ARN for HTTPS (used when enable_https = true). May be known-after-apply."
   type        = string
   default     = ""
 }

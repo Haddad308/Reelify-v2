@@ -97,9 +97,28 @@ module "edge" {
   name              = local.name
   vpc_id            = module.network.vpc_id
   public_subnet_ids = module.network.public_subnet_ids
+  enable_https      = var.create_certificate
   certificate_arn   = module.dns.certificate_arn
   hosted_zone_id    = var.enable_dns_records ? module.dns.zone_id : ""
   domain_names      = var.domain_names
+}
+
+module "cognito" {
+  source = "../../modules/cognito"
+  count  = var.enable_cognito ? 1 : 0
+
+  name          = local.name
+  callback_urls = var.cognito_callback_urls
+  logout_urls   = var.cognito_logout_urls
+  domain_prefix = var.cognito_domain_prefix
+}
+
+# When AUTH_MODE=cognito the API container needs the pool + client ids.
+locals {
+  cognito_api_env = var.auth_mode == "cognito" && var.enable_cognito ? [
+    { name = "COGNITO_USER_POOL_ID", value = module.cognito[0].user_pool_id },
+    { name = "COGNITO_CLIENT_ID", value = module.cognito[0].client_id },
+  ] : []
 }
 
 # ECS services are created only once a backend image exists in ECR.
@@ -125,6 +144,30 @@ module "compute" {
   queue_urls   = module.queue.queue_urls
   media_bucket = module.storage.bucket_id
 
-  auth_mode    = var.auth_mode
-  gemini_model = var.gemini_model
+  auth_mode     = var.auth_mode
+  gemini_model  = var.gemini_model
+  api_extra_env = local.cognito_api_env
+}
+
+# ---------------------------------------------------------------------------
+# Ops: one monthly cost budget. Notifications are added only when an email is
+# supplied (a budget notification requires at least one subscriber).
+# ---------------------------------------------------------------------------
+resource "aws_budgets_budget" "monthly" {
+  name         = "${local.name}-monthly"
+  budget_type  = "COST"
+  limit_amount = tostring(var.budget_limit_usd)
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  dynamic "notification" {
+    for_each = var.budget_alert_email == "" ? [] : [80, 100, 120]
+    content {
+      comparison_operator        = "GREATER_THAN"
+      threshold                  = notification.value
+      threshold_type             = "PERCENTAGE"
+      notification_type          = "ACTUAL"
+      subscriber_email_addresses = [var.budget_alert_email]
+    }
+  }
 }
