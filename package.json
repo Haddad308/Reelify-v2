@@ -13,7 +13,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "test": "npm run test -ws --if-present",
+    "ci": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "@axiomhq/js": "^1.4.0",

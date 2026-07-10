@@ -53,3 +53,8 @@ output "cognito_client_id" {
 output "cognito_hosted_ui_domain" {
   value = var.enable_cognito ? module.cognito[0].hosted_ui_domain : ""
 }
+
+output "github_deploy_role_arn" {
+  description = "Set as GitHub repo variable AWS_DEPLOY_ROLE_ARN for the deploy workflow."
+  value       = var.enable_github_actions ? module.github_actions[0].deploy_role_arn : ""
+}

@@ -124,3 +124,28 @@ variable "budget_alert_email" {
   type        = string
   default     = ""
 }
+
+# ---- GitHub Actions CI/CD ---------------------------------------------------
+variable "enable_github_actions" {
+  description = "Create the GitHub OIDC deploy role (ECR push + ECS redeploy)."
+  type        = bool
+  default     = true
+}
+
+variable "github_org" {
+  description = "GitHub org/user for OIDC trust."
+  type        = string
+  default     = "ebrahimtarteel606"
+}
+
+variable "github_repo" {
+  description = "GitHub repository name for OIDC trust."
+  type        = string
+  default     = "reelify"
+}
+
+variable "github_deploy_branches" {
+  description = "Branches allowed to assume the GitHub deploy role."
+  type        = list(string)
+  default     = ["master"]
+}

@@ -37,6 +37,11 @@ If `aws sts get-caller-identity` fails, re-run `aws login` in a terminal.
 
 ## Redeploy after a code change
 
+**Automated (preferred):** merge to `master` — GitHub Actions deploys to ECS. See
+`docs/CI_CD.md`.
+
+**Manual:**
+
 ```bash
 # 1) Backend (api/ffmpeg/light) — build x86_64, push, force new deployments
 ECR=666730152143.dkr.ecr.us-east-1.amazonaws.com/reelify/backend

@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  NEXT_PUBLIC_API_BASE: https://api.reelify.cc
+  NEXT_PUBLIC_AUTH_MODE: cognito
+  NEXT_PUBLIC_SITE_URL: https://reelify.cc
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install -g npm@11 && npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema db/schema.prisma
+
+      - name: Typecheck workspaces
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Build Next.js app
+        env:
+          # Skip Sentry source-map upload in CI (no auth token required).
+          SENTRY_AUTH_TOKEN: ""
+          CI: true
+        run: npm run build
+
+  docker-build:
+    name: Docker build (smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.backend
+          platforms: linux/amd64
+          push: false
+          tags: reelify/backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          platforms: linux/amd64
+          push: false
+          tags: reelify/web:ci
+          build-args: |
+            NEXT_PUBLIC_API_BASE=${{ env.NEXT_PUBLIC_API_BASE }}
+            NEXT_PUBLIC_AUTH_MODE=${{ env.NEXT_PUBLIC_AUTH_MODE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

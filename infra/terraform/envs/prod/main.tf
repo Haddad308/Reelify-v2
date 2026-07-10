@@ -149,6 +149,22 @@ module "compute" {
   api_extra_env = local.cognito_api_env
 }
 
+# GitHub Actions OIDC role — ECR push + ECS force-new-deployment from CI.
+module "github_actions" {
+  source = "../../modules/github-actions"
+  count  = var.enable_github_actions ? 1 : 0
+
+  name             = local.name
+  aws_region       = var.aws_region
+  github_org       = var.github_org
+  github_repo      = var.github_repo
+  allowed_branches = var.github_deploy_branches
+  ecr_repository_arns = [
+    module.registry.repository_arns["backend"],
+    module.registry.repository_arns["web"],
+  ]
+}
+
 # ---------------------------------------------------------------------------
 # Ops: one monthly cost budget. Notifications are added only when an email is
 # supplied (a budget notification requires at least one subscriber).

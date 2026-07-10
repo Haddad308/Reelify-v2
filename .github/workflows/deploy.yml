@@ -1,0 +1,118 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      skip_health_check:
+        description: Skip post-deploy health checks
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "666730152143"
+  ECS_CLUSTER: reelify
+  ECR_BACKEND: 666730152143.dkr.ecr.us-east-1.amazonaws.com/reelify/backend
+  ECR_WEB: 666730152143.dkr.ecr.us-east-1.amazonaws.com/reelify/web
+  NEXT_PUBLIC_API_BASE: https://api.reelify.cc
+  NEXT_PUBLIC_AUTH_MODE: cognito
+  NEXT_PUBLIC_SITE_URL: https://reelify.cc
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.backend
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.ECR_BACKEND }}:latest
+            ${{ env.ECR_BACKEND }}:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.ECR_WEB }}:latest
+            ${{ env.ECR_WEB }}:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE=${{ env.NEXT_PUBLIC_API_BASE }}
+            NEXT_PUBLIC_AUTH_MODE=${{ env.NEXT_PUBLIC_AUTH_MODE }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Force new ECS deployments
+        run: |
+          for service in reelify-api reelify-ffmpeg reelify-light reelify-web; do
+            echo "Redeploying ${service}..."
+            aws ecs update-service \
+              --cluster "${ECS_CLUSTER}" \
+              --service "${service}" \
+              --force-new-deployment \
+              --output text \
+              --query 'service.serviceName'
+          done
+
+      - name: Wait for ECS services to stabilize
+        run: |
+          for service in reelify-api reelify-ffmpeg reelify-light reelify-web; do
+            echo "Waiting for ${service}..."
+            aws ecs wait services-stable \
+              --cluster "${ECS_CLUSTER}" \
+              --services "${service}"
+          done
+
+      - name: Health check
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_health_check != true }}
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            if curl -fsS "https://api.reelify.cc/v1/healthz" | grep -q '"status":"ok"'; then
+              echo "API health check passed"
+              break
+            fi
+            echo "API not ready yet (attempt ${i}/5)..."
+            sleep 10
+          done
+          curl -fsS "https://api.reelify.cc/v1/healthz" | grep -q '"status":"ok"'
+          curl -fsS -o /dev/null -w "Web status: %{http_code}\n" "https://reelify.cc/en/app"
