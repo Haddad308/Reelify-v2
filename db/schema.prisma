@@ -1,0 +1,559 @@
+// Reelify data model — plan §8 (entities, statuses, uniqueness) + §7 (state
+// machine, idempotency, transactional outbox).
+//
+// Conventions:
+// - Every tenant-owned row carries agency_id (+ workspace_id where relevant).
+// - created_at/updated_at everywhere; deleted_at where soft deletion applies.
+// - agency_id is denormalized onto deep tables for tenant isolation / RLS
+//   (defense-in-depth), so it is a scalar column there rather than a relation.
+// - PostgreSQL row-level security is added in a later migration as a
+//   defense-in-depth layer, not the sole authorization system.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum AgencyPlan {
+  FREE
+  STARTER
+  GROWTH
+  SCALE
+  ENTERPRISE
+}
+
+enum BillingStatus {
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELLED
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum AgencyRole {
+  OWNER
+  ADMIN
+  EDITOR
+  CLIENT_VIEWER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum WorkspaceRole {
+  MANAGER
+  EDITOR
+  VIEWER
+}
+
+enum WorkspaceStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum VideoAssetStatus {
+  UPLOADING
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+  DELETION_PENDING
+  DELETED
+}
+
+enum ArtifactType {
+  AUDIO
+  RENDERED_CLIP
+  CAPTIONS
+  THUMBNAIL
+}
+
+enum StorageClass {
+  STANDARD
+  STANDARD_IA
+  INTELLIGENT_TIERING
+  GLACIER
+  DEEP_ARCHIVE
+}
+
+enum ProcessingStage {
+  VALIDATE_MEDIA
+  EXTRACT_AUDIO
+  TRANSCRIBE
+  SCORE_CLIPS
+}
+
+enum ProcessingJobStatus {
+  QUEUED
+  VALIDATING_MEDIA
+  PROCESSING_AUDIO
+  TRANSCRIBING
+  WAITING_FOR_PROVIDER
+  SCORING_CLIPS
+  COMPLETED
+  FAILED
+  CANCELLED
+  RETRY_SCHEDULED
+  DELETION_PENDING
+  DELETED
+}
+
+enum JobAttemptStatus {
+  STARTED
+  SUCCEEDED
+  FAILED_RETRYABLE
+  FAILED_FINAL
+  CANCELLED
+  TIMED_OUT
+}
+
+enum UploadSessionStatus {
+  PENDING
+  COMPLETED
+  ABORTED
+  EXPIRED
+}
+
+enum UsageUnit {
+  VIDEO_STORAGE_GB_HOUR
+  SOURCE_VIDEO_UPLOAD_GB
+  FFMPEG_TASK_SECOND
+  TRANSCRIPTION_AUDIO_MINUTE
+  GEMINI_INPUT_TOKEN
+  GEMINI_OUTPUT_TOKEN
+  CLIP_RENDER_MINUTE
+  DATA_EGRESS_GB
+}
+
+enum OutboxStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy & identity
+// ---------------------------------------------------------------------------
+
+model Agency {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  plan          AgencyPlan    @default(FREE)
+  billingStatus BillingStatus @default(ACTIVE)
+  // Immutable after creation (enforced at the application layer). Default "us".
+  dataRegion    String        @default("us")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  agencyUsers AgencyUser[]
+  workspaces  Workspace[]
+  videoAssets VideoAsset[]
+
+  @@index([dataRegion])
+  @@map("agencies")
+}
+
+model User {
+  id          String     @id @default(cuid())
+  // Managed-IdP subject (Amazon Cognito `sub`).
+  authSubject String     @unique
+  email       String     @unique
+  status      UserStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  agencyUsers          AgencyUser[]
+  workspaceMemberships WorkspaceMembership[]
+
+  @@map("users")
+}
+
+model AgencyUser {
+  id        String           @id @default(cuid())
+  agencyId  String
+  userId    String
+  role      AgencyRole       @default(EDITOR)
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, userId])
+  @@index([agencyId, status])
+  @@map("agency_users")
+}
+
+model Workspace {
+  id         String          @id @default(cuid())
+  agencyId   String
+  name       String
+  clientName String?
+  status     WorkspaceStatus @default(ACTIVE)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  deletedAt  DateTime?
+
+  agency      Agency                @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  memberships WorkspaceMembership[]
+  videoAssets VideoAsset[]
+
+  @@index([agencyId, name])
+  @@index([agencyId, status])
+  @@map("workspaces")
+}
+
+model WorkspaceMembership {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(VIEWER)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId, workspaceId])
+  @@map("workspace_memberships")
+}
+
+// ---------------------------------------------------------------------------
+// Media assets & artifacts
+// ---------------------------------------------------------------------------
+
+model VideoAsset {
+  id             String           @id @default(cuid())
+  agencyId       String
+  workspaceId    String
+  bucket         String
+  objectKey      String
+  objectVersion  String?
+  checksumSha256 String?
+  sizeBytes      BigInt?
+  durationMs     Int?
+  status         VideoAssetStatus @default(UPLOADING)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  agency         Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  mediaArtifacts MediaArtifact[]
+  processingJobs ProcessingJob[]
+  transcripts    Transcript[]
+  uploadSessions UploadSession[]
+
+  @@unique([bucket, objectKey, objectVersion])
+  @@index([workspaceId, createdAt])
+  @@index([agencyId, status])
+  @@map("video_assets")
+}
+
+model MediaArtifact {
+  id             String       @id @default(cuid())
+  videoAssetId   String
+  agencyId       String
+  type           ArtifactType
+  objectKey      String
+  objectVersion  String?
+  checksumSha256 String?
+  sizeBytes      BigInt?
+  format         String? // e.g. FLAC, OPUS, MP4
+  storageClass   StorageClass @default(STANDARD)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  videoAsset  VideoAsset   @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+  transcripts Transcript[] @relation("AudioArtifactTranscripts")
+
+  @@unique([objectKey, objectVersion])
+  @@index([videoAssetId, type])
+  @@map("media_artifacts")
+}
+
+// ---------------------------------------------------------------------------
+// Jobs & attempts (state machine + outbox)
+// ---------------------------------------------------------------------------
+
+model ProcessingJob {
+  id                    String              @id @default(cuid())
+  videoAssetId          String
+  agencyId              String
+  workspaceId           String
+  requestedByUserId     String?
+  pipelineVersion       String              @default("v1")
+  status                ProcessingJobStatus @default(QUEUED)
+  cancellationRequested Boolean             @default(false)
+  // App-supplied Idempotency-Key for the create-job endpoint (dedupes creation).
+  idempotencyKey        String?             @unique
+  lastErrorClass        String?
+  lastErrorMessage      String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  videoAsset VideoAsset             @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+  attempts   ProcessingJobAttempt[]
+
+  // NOTE: a partial UNIQUE index on (video_asset_id, pipeline_version) WHERE
+  // status is non-terminal is added in a follow-up migration (Prisma cannot
+  // express partial indexes in-schema) to guarantee one active job per video.
+  @@index([videoAssetId, status])
+  @@index([workspaceId, status])
+  @@map("processing_jobs")
+}
+
+model ProcessingJobAttempt {
+  id                String           @id @default(cuid())
+  jobId             String
+  stage             ProcessingStage
+  attemptNumber     Int
+  status            JobAttemptStatus @default(STARTED)
+  // {job_id}:{stage}:{pipeline_version}:{artifact_checksum}
+  idempotencyKey    String           @unique
+  providerRequestId String?
+  errorClass        String?
+  errorMessage      String?
+  nextAttemptAt     DateTime?
+  startedAt         DateTime         @default(now())
+  finishedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  job ProcessingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, stage, attemptNumber])
+  @@index([status, nextAttemptAt])
+  @@map("processing_job_attempts")
+}
+
+// ---------------------------------------------------------------------------
+// Transcripts & scoring
+// ---------------------------------------------------------------------------
+
+model Transcript {
+  id                    String   @id @default(cuid())
+  videoAssetId          String
+  agencyId              String
+  audioArtifactId       String
+  provider              String
+  providerModel         String
+  language              String
+  transcriptVersion     Int      @default(1)
+  audioArtifactChecksum String
+  text                  String?  @db.Text
+  durationMs            Int?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  videoAsset    VideoAsset       @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+  audioArtifact MediaArtifact    @relation("AudioArtifactTranscripts", fields: [audioArtifactId], references: [id])
+  words         TranscriptWord[]
+  scoringRuns   ClipScoringRun[]
+
+  // Deterministic transcript uniqueness (plan §8).
+  @@unique([audioArtifactChecksum, provider, providerModel, language, transcriptVersion])
+  @@index([videoAssetId, provider, providerModel])
+  @@index([audioArtifactChecksum])
+  @@map("transcripts")
+}
+
+model TranscriptWord {
+  id           String   @id @default(cuid())
+  transcriptId String
+  sequence     Int
+  text         String
+  startMs      Int
+  endMs        Int
+  confidence   Float?
+  createdAt    DateTime @default(now())
+
+  transcript Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  @@unique([transcriptId, sequence])
+  @@index([transcriptId, startMs])
+  @@map("transcript_words")
+}
+
+model ClipScoringRun {
+  id                  String   @id @default(cuid())
+  transcriptId        String
+  agencyId            String
+  provider            String
+  model               String
+  promptVersion       String
+  outputSchemaVersion String
+  responseMeta        Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  transcript Transcript      @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  candidates ClipCandidate[]
+
+  // Deterministic scoring uniqueness (plan §8).
+  @@unique([transcriptId, provider, model, promptVersion, outputSchemaVersion])
+  @@index([transcriptId, promptVersion, model])
+  @@map("clip_scoring_runs")
+}
+
+model ClipCandidate {
+  id           String   @id @default(cuid())
+  scoringRunId String
+  transcriptId String
+  agencyId     String
+  startMs      Int
+  endMs        Int
+  durationMs   Int
+  score        Float
+  rank         Int
+  title        String?
+  reason       String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  scoringRun ClipScoringRun @relation(fields: [scoringRunId], references: [id], onDelete: Cascade)
+
+  // Deterministic candidate uniqueness (plan §8).
+  @@unique([scoringRunId, startMs, endMs])
+  @@index([transcriptId, score(sort: Desc)])
+  @@index([scoringRunId, rank])
+  @@map("clip_candidates")
+}
+
+// ---------------------------------------------------------------------------
+// Upload sessions
+// ---------------------------------------------------------------------------
+
+model UploadSession {
+  id                String              @id @default(cuid())
+  videoAssetId      String
+  agencyId          String
+  workspaceId       String
+  bucket            String
+  objectKey         String
+  multipartUploadId String
+  partSizeBytes     Int
+  status            UploadSessionStatus @default(PENDING)
+  idempotencyKey    String?             @unique
+  expiresAt         DateTime
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  videoAsset VideoAsset @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+
+  @@index([status, expiresAt])
+  @@map("upload_sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Cost attribution & audit
+// ---------------------------------------------------------------------------
+
+model UsageEvent {
+  id              String           @id @default(cuid())
+  agencyId        String
+  workspaceId     String?
+  videoAssetId    String?
+  jobId           String?
+  stage           ProcessingStage?
+  unit            UsageUnit
+  quantity        Decimal          @db.Decimal(24, 6)
+  costEstimateUsd Decimal?         @db.Decimal(20, 6)
+  occurredAt      DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+
+  @@index([agencyId, occurredAt])
+  @@index([workspaceId, occurredAt])
+  @@index([jobId])
+  @@map("usage_events")
+}
+
+model UsageMeter {
+  id               String   @id @default(cuid())
+  agencyId         String
+  billingPeriod    String // e.g. "2026-07"
+  metric           String
+  includedQuantity Decimal  @default(0) @db.Decimal(24, 6)
+  usedQuantity     Decimal  @default(0) @db.Decimal(24, 6)
+  billedQuantity   Decimal  @default(0) @db.Decimal(24, 6)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([agencyId, billingPeriod, metric])
+  @@map("usage_meters")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  agencyId    String?
+  workspaceId String?
+  action      String
+  targetType  String?
+  targetId    String?
+  ipHash      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([agencyId, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Transactional outbox & idempotency
+// ---------------------------------------------------------------------------
+
+model OutboxEvent {
+  id            String       @id @default(cuid())
+  aggregateType String
+  aggregateId   String
+  eventType     String
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  availableAt   DateTime     @default(now())
+  deliveredAt   DateTime?
+  attempts      Int          @default(0)
+  lastError     String?
+  createdAt     DateTime     @default(now())
+
+  @@index([status, availableAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
+}
+
+model IdempotencyKey {
+  id             String    @id @default(cuid())
+  key            String
+  endpoint       String
+  agencyId       String?
+  requestHash    String?
+  responseStatus Int?
+  responseBody   Json?
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime?
+
+  @@unique([endpoint, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}

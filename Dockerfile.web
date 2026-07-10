@@ -1,0 +1,52 @@
+# Next.js (App Router) web app as a standalone server image for ECS/Fargate.
+# NEXT_PUBLIC_* values are inlined at build time, so they are passed as build
+# NEXT_PUBLIC_* values are inlined at build time (see docs/FRONTEND_INTEGRATION_GUIDE.md).
+#
+# Build for Fargate (x86_64):
+#   docker build --platform linux/amd64 -f Dockerfile.web \
+#     --build-arg NEXT_PUBLIC_API_BASE=https://api.reelify.cc \
+#     --build-arg NEXT_PUBLIC_AUTH_MODE=cognito \
+#     -t "${ECR}:latest" .
+
+# ---- builder -----------------------------------------------------------------
+FROM node:22-bookworm-slim AS builder
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Whole repo (minus .dockerignore). Workspace package.json files must be present
+# for `npm ci` to satisfy the root lockfile.
+COPY . .
+RUN npm install -g npm@11 && npm ci
+# `next build` type-checks project .ts files, which reaches @reelify/db's
+# re-export of the generated Prisma client. Generate it so the build resolves
+# (parity with local; builder stage only — not shipped in the runner image).
+RUN npx prisma generate --schema db/schema.prisma
+
+ARG NEXT_PUBLIC_API_BASE
+ARG NEXT_PUBLIC_AUTH_MODE
+ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE \
+    NEXT_PUBLIC_AUTH_MODE=$NEXT_PUBLIC_AUTH_MODE \
+    NODE_ENV=production
+
+RUN npm run build
+
+# ---- runner ------------------------------------------------------------------
+FROM node:22-bookworm-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+
+RUN useradd --system --uid 10001 nextjs
+
+# Standalone output bundles a minimal server.js + traced node_modules.
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+# next-intl loads messages/<locale>.json at runtime; ensure they're present.
+COPY --from=builder /app/messages ./messages
+
+USER nextjs
+EXPOSE 3000
+CMD ["node", "server.js"]

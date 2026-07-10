@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is gitignored.
+# All values below are the built-in defaults; override only what you need.
+
+project              = "reelify"
+env                  = "dev"
+aws_region           = "us-east-1"
+data_region          = "us"
+vpc_cidr             = "10.0.0.0/16"
+az_count             = 2
+media_bucket_name    = "reelify-media-us-dev"
+cors_allowed_origins = ["http://localhost:3000", "https://reelify.cc"]

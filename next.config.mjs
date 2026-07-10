@@ -5,6 +5,8 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Self-contained server bundle for the container image (ECS/Fargate).
+  output: "standalone",
   // Use Babel instead of SWC if SWC fails
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
