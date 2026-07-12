@@ -103,14 +103,31 @@ users hit `/login` before reaching `/en/app`.
 
 Cognito proves **identity** (`sub`). The API proves **tenancy** (user row +
 agency/workspace membership in Postgres). A Cognito user with no DB row gets
-**403 user is not provisioned**.
+**403 user is not provisioned** until provisioned.
 
-For each new Cognito user, backend/admin must create:
+**Self sign-up is enabled** on the Cognito user pool (Hosted UI + SignUp API).
+After the user confirms their email and obtains tokens, call:
 
-- `users.authSubject` = Cognito `sub`
-- `agency_users` and/or `workspace_memberships` as appropriate
+```http
+POST /v1/auth/provision
+Authorization: Bearer <access_token>
+Content-Type: application/json
 
-The pilot owner is already provisioned (`owner@reelify.cc`).
+{ "email": "user@example.com" }
+```
+
+`email` in the body is optional when the access token already carries it
+(Cognito `username` when email is the username attribute). Response:
+
+```json
+{ "userId": "usr_…", "workspaceId": "ws_e2e", "created": true }
+```
+
+The call is **idempotent** — safe to run after every login. New users are added
+to the pilot workspace (`ws_e2e`) with `EDITOR` membership.
+
+Admin-created users (legacy) still work: create via `admin-create-user`, then
+insert `users.authSubject` + membership rows manually if not using provision.
 
 ---
 
@@ -488,8 +505,18 @@ https://reelify-auth.auth.us-east-1.amazoncognito.com/login
   &redirect_uri=https://reelify.cc/en/app
 ```
 
-Implement `/en/app` (or `/auth/callback`) to exchange `code` for tokens server-
-or client-side, then redirect to the editor.
+**Hosted UI sign-up URL:**
+
+```
+https://reelify-auth.auth.us-east-1.amazoncognito.com/signup
+  ?client_id=2kq0sp03kcp58tphi7e64iqf0t
+  &response_type=code
+  &scope=openid+email+profile
+  &redirect_uri=https://reelify.cc/en/app
+```
+
+After OAuth callback, exchange `code` for tokens, then call `POST
+/v1/auth/provision` before other API calls.
 
 Update Terraform `cognito_callback_urls` when the callback route is final.
 

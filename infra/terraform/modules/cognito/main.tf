@@ -1,10 +1,10 @@
 ###############################################################################
 # cognito module — user pool + public app client + hosted-UI domain (plan §11).
 #
-# Pilot posture: admin-created users only (no self sign-up). The app client is
-# public (no secret) so the browser/CLI can obtain tokens; USER_PASSWORD_AUTH is
-# enabled so an owner can mint an access token to paste into the Studio page.
-# The API verifies the ACCESS token (client_id == this client).
+# Pilot posture: self sign-up enabled by default (see allow_self_sign_up). The
+# app client is public (no secret) so the browser/CLI can obtain tokens;
+# USER_PASSWORD_AUTH is enabled for CLI debugging. The API verifies the ACCESS
+# token (client_id == this client).
 ###############################################################################
 
 locals {
@@ -18,7 +18,7 @@ resource "aws_cognito_user_pool" "this" {
   auto_verified_attributes = ["email"]
 
   admin_create_user_config {
-    allow_admin_create_user_only = true # pilot: no open sign-up
+    allow_admin_create_user_only = !var.allow_self_sign_up
   }
 
   password_policy {

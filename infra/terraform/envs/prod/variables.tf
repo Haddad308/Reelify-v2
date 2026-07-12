@@ -100,6 +100,18 @@ variable "cognito_domain_prefix" {
   default     = "reelify-auth"
 }
 
+variable "cognito_allow_self_sign_up" {
+  description = "Allow users to self-register via Cognito Hosted UI / SignUp API."
+  type        = bool
+  default     = true
+}
+
+variable "pilot_workspace_id" {
+  description = "Workspace id auto-assigned to newly registered pilot users (API provisioning)."
+  type        = string
+  default     = "ws_e2e"
+}
+
 variable "cognito_callback_urls" {
   description = "Allowed OAuth callback URLs for the hosted UI."
   type        = list(string)

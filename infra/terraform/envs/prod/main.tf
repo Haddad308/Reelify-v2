@@ -107,10 +107,11 @@ module "cognito" {
   source = "../../modules/cognito"
   count  = var.enable_cognito ? 1 : 0
 
-  name          = local.name
-  callback_urls = var.cognito_callback_urls
-  logout_urls   = var.cognito_logout_urls
-  domain_prefix = var.cognito_domain_prefix
+  name               = local.name
+  allow_self_sign_up = var.cognito_allow_self_sign_up
+  callback_urls      = var.cognito_callback_urls
+  logout_urls        = var.cognito_logout_urls
+  domain_prefix      = var.cognito_domain_prefix
 }
 
 # When AUTH_MODE=cognito the API container needs the pool + client ids.
@@ -118,6 +119,7 @@ locals {
   cognito_api_env = var.auth_mode == "cognito" && var.enable_cognito ? [
     { name = "COGNITO_USER_POOL_ID", value = module.cognito[0].user_pool_id },
     { name = "COGNITO_CLIENT_ID", value = module.cognito[0].client_id },
+    { name = "PILOT_WORKSPACE_ID", value = var.pilot_workspace_id },
   ] : []
 }
 

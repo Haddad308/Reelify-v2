@@ -15,6 +15,8 @@ export interface ApiConfig {
   partSizeBytes: number;
   uploadUrlTtlSeconds: number;
   pipelineVersion: string;
+  /** Workspace auto-assigned to newly registered pilot users. */
+  pilotWorkspaceId?: string;
 }
 
 function required(env: NodeJS.ProcessEnv, key: string): string {
@@ -43,5 +45,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     partSizeBytes: Number(env.UPLOAD_PART_SIZE_BYTES ?? 64 * 1024 * 1024),
     uploadUrlTtlSeconds: Number(env.UPLOAD_URL_TTL_SECONDS ?? 3600),
     pipelineVersion: env.PIPELINE_VERSION ?? "v1",
+    pilotWorkspaceId: env.PILOT_WORKSPACE_ID || undefined,
   };
 }

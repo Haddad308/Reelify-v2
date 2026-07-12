@@ -3,6 +3,12 @@ variable "name" {
   type        = string
 }
 
+variable "allow_self_sign_up" {
+  description = "When true, users can register via Hosted UI / SignUp API. When false, only admins can create users."
+  type        = bool
+  default     = true
+}
+
 variable "domain_prefix" {
   description = "Globally-unique hosted-UI domain prefix (<prefix>.auth.<region>.amazoncognito.com)."
   type        = string

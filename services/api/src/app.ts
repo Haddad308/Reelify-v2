@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type { Authenticator } from "./auth";
 import type { ApiConfig } from "./config";
 import { ApiError } from "./errors";
+import { registerAuthRoutes } from "./routes/auth";
 import { registerHealthRoutes } from "./routes/health";
 import { registerJobRoutes } from "./routes/jobs";
 import { registerUploadRoutes } from "./routes/uploads";
@@ -36,6 +37,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
 
   registerHealthRoutes(app);
+  registerAuthRoutes(app, deps);
   registerUploadRoutes(app, deps);
   registerJobRoutes(app, deps);
   registerVideoRoutes(app, deps);

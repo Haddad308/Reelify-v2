@@ -42,9 +42,11 @@ export class CognitoAuthenticator implements Authenticator {
     try {
       const payload = await this.verifier.verify(token);
       const rec = payload as unknown as Record<string, unknown>;
+      const username = typeof rec.username === "string" ? rec.username : undefined;
+      const emailClaim = typeof rec.email === "string" ? rec.email : undefined;
       return {
         authSubject: payload.sub,
-        email: typeof rec.email === "string" ? rec.email : undefined,
+        email: emailClaim ?? (username?.includes("@") ? username : undefined),
       };
     } catch {
       throw new UnauthorizedError("invalid token");

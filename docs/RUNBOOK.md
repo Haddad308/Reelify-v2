@@ -124,10 +124,16 @@ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id "$CLIEN
   --query 'AuthenticationResult.AccessToken' --output text
 ```
 
-Paste the token into the Studio page's "Bearer token" field. New users:
-`aws cognito-idp admin-create-user` + `admin-set-user-password --permanent`, then
-add a matching row in `users` (`authSubject` = the Cognito `sub`) and an
-`agency_users` membership.
+Paste the token into the Studio page's "Bearer token" field.
+
+**Self sign-up (pilot):** users register via Cognito Hosted UI (`/signup` URL —
+see `terraform output cognito_hosted_ui_signup_url`) or Amplify `signUp`. After
+login, the app must call `POST /v1/auth/provision` with the access token to
+create the DB user + pilot workspace membership.
+
+**Admin-created users** (optional): `aws cognito-idp admin-create-user` +
+`admin-set-user-password --permanent`, then provision via the same endpoint or
+insert `users.authSubject` + membership rows manually.
 
 ## Health checks
 
