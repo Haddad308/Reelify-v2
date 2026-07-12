@@ -95,6 +95,7 @@ export function ReelCard({ reel }: { reel: Reel }) {
               render={
                 <button
                   type="button"
+                  aria-label="More reel options"
                   className="flex size-[30px] shrink-0 items-center justify-center rounded-lg border border-border-input bg-white"
                 >
                   <MoreHorizontal className="size-3.5 text-muted-1" />

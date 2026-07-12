@@ -45,6 +45,7 @@ export function CaptionsList({
                 </span>
                 <button
                   type="button"
+                  aria-label="Delete caption"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete(c.id);

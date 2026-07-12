@@ -147,6 +147,7 @@ export function ShareReelDialog({
                     <button
                       type="button"
                       onClick={() => setEmails(emails.filter((e) => e !== email))}
+                      aria-label={`Remove ${email}`}
                     >
                       <XIcon className="size-3 text-muted-1" />
                     </button>

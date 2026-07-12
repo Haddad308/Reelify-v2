@@ -210,7 +210,11 @@ export function ShareProjectDialog({
                     className="flex items-center gap-1.5 rounded-full bg-fill-3 py-1 pr-1.5 pl-2.5 text-xs font-semibold text-ink"
                   >
                     {email}
-                    <button type="button" onClick={() => setEmails(emails.filter((e) => e !== email))}>
+                    <button
+                      type="button"
+                      onClick={() => setEmails(emails.filter((e) => e !== email))}
+                      aria-label={`Remove ${email}`}
+                    >
                       <XIcon className="size-3 text-muted-1" />
                     </button>
                   </span>

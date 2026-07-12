@@ -56,6 +56,7 @@ export function EditorPreviewPane({
         <button
           type="button"
           onClick={onTogglePlay}
+          aria-label={isPlaying ? "Pause" : "Play"}
           className="absolute inset-0 z-10 flex items-center justify-center"
         >
           <div className="flex size-11 items-center justify-center rounded-full bg-white/15">
@@ -75,6 +76,7 @@ export function EditorPreviewPane({
         <button
           type="button"
           onClick={() => onSeek(-5000)}
+          aria-label="Rewind 5 seconds"
           className="flex size-7 items-center justify-center rounded-lg bg-white/8"
         >
           <SkipBack className="size-3 text-white/70" />
@@ -82,6 +84,7 @@ export function EditorPreviewPane({
         <button
           type="button"
           onClick={onTogglePlay}
+          aria-label={isPlaying ? "Pause" : "Play"}
           className="flex size-8.5 items-center justify-center rounded-full bg-brand"
         >
           {isPlaying ? (
@@ -93,6 +96,7 @@ export function EditorPreviewPane({
         <button
           type="button"
           onClick={() => onSeek(5000)}
+          aria-label="Skip forward 5 seconds"
           className="flex size-7 items-center justify-center rounded-lg bg-white/8"
         >
           <SkipForward className="size-3 text-white/70" />

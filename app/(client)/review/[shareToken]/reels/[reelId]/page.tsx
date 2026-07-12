@@ -197,6 +197,7 @@ function ReviewBody({
                 onClick={() =>
                   router.push(`/review/${shareToken}/reels/${sharedReels[currentIndex - 1].id}`)
                 }
+                aria-label="Previous reel"
                 className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-border-input bg-white disabled:opacity-40"
               >
                 <ChevronLeft className="size-3.5" />
@@ -248,6 +249,7 @@ function ReviewBody({
                 onClick={() =>
                   router.push(`/review/${shareToken}/reels/${sharedReels[currentIndex + 1].id}`)
                 }
+                aria-label="Next reel"
                 className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand disabled:opacity-40"
               >
                 <ChevronRight className="size-3.5 text-white" />
@@ -284,6 +286,7 @@ function ReviewBody({
               <button
                 type="button"
                 onClick={() => setIsPlaying((p) => !p)}
+                aria-label={isPlaying ? "Pause" : "Play"}
                 className="absolute inset-0 z-10 flex items-center justify-center"
               >
                 <div className="flex size-13 items-center justify-center rounded-full bg-white/15">
@@ -312,6 +315,7 @@ function ReviewBody({
               <button
                 type="button"
                 onClick={() => setCurrentTimeMs((t) => Math.max(0, t - 5000))}
+                aria-label="Rewind 5 seconds"
                 className="flex size-8 items-center justify-center rounded-lg bg-white"
               >
                 <SkipBack className="size-3.5 text-ink-tertiary" />
@@ -319,6 +323,7 @@ function ReviewBody({
               <button
                 type="button"
                 onClick={() => setIsPlaying((p) => !p)}
+                aria-label={isPlaying ? "Pause" : "Play"}
                 className="flex size-10 items-center justify-center rounded-full bg-brand"
               >
                 {isPlaying ? (
@@ -330,6 +335,7 @@ function ReviewBody({
               <button
                 type="button"
                 onClick={() => setCurrentTimeMs((t) => Math.min(totalMs, t + 5000))}
+                aria-label="Skip forward 5 seconds"
                 className="flex size-8 items-center justify-center rounded-lg bg-white"
               >
                 <SkipForward className="size-3.5 text-ink-tertiary" />
