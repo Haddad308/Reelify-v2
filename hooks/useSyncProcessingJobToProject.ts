@@ -11,12 +11,12 @@ import type { Project } from "@/types/reelify";
  * without a processingJobId (seeded demo data, or one still uploading).
  * Reused wherever a project is rendered so every screen sees the same state.
  */
-export function useSyncProcessingJobToProject(project: Project) {
-  const { data: job } = useProcessingJob(project.processingJobId);
+export function useSyncProcessingJobToProject(project: Project | undefined) {
+  const { data: job } = useProcessingJob(project?.processingJobId);
   const updateProject = useProjectStore((s) => s.updateProject);
 
   useEffect(() => {
-    if (!job) return;
+    if (!job || !project) return;
 
     if (job.status === "COMPLETED" && project.status !== "completed") {
       updateProject(project.id, { status: "completed", processingProgress: 100 });
@@ -35,5 +35,5 @@ export function useSyncProcessingJobToProject(project: Project) {
         updateProject(project.id, { status: "processing", processingProgress: percent });
       }
     }
-  }, [job, project.id, project.status, project.processingProgress, updateProject]);
+  }, [job, project, updateProject]);
 }

@@ -11,31 +11,31 @@ function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const completeHostedUiSignIn = useAuthStore((s) => s.completeHostedUiSignIn);
-  const [error, setError] = useState<string | null>(null);
+  const [asyncError, setAsyncError] = useState<string | null>(null);
   const ranRef = useRef(false);
 
+  const oauthError = searchParams.get("error");
+  const code = searchParams.get("code");
+  // Derived at render time (not via setState-in-effect) since these don't
+  // depend on anything async — only the token exchange below is a real effect.
+  const staticError = oauthError
+    ? (searchParams.get("error_description") ?? oauthError)
+    : !code
+      ? "Missing authorization code from Google sign-in redirect."
+      : null;
+
   useEffect(() => {
-    if (ranRef.current) return;
+    if (ranRef.current || staticError) return;
     ranRef.current = true;
 
-    const oauthError = searchParams.get("error");
-    if (oauthError) {
-      setError(searchParams.get("error_description") ?? oauthError);
-      return;
-    }
-
-    const code = searchParams.get("code");
-    if (!code) {
-      setError("Missing authorization code from Google sign-in redirect.");
-      return;
-    }
-
-    completeHostedUiSignIn(code)
+    completeHostedUiSignIn(code!)
       .then(() => router.replace("/projects"))
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Google sign-in failed"),
+        setAsyncError(err instanceof Error ? err.message : "Google sign-in failed"),
       );
-  }, [searchParams, completeHostedUiSignIn, router]);
+  }, [code, staticError, completeHostedUiSignIn, router]);
+
+  const error = staticError ?? asyncError;
 
   return (
     <>

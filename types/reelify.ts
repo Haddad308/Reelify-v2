@@ -130,6 +130,17 @@ export interface Caption {
   style: CaptionStyle;
 }
 
+export const MUSIC_TRACKS = [
+  { id: "none", name: "No music" },
+  { id: "upbeat-pop", name: "Upbeat Pop" },
+  { id: "chill-lofi", name: "Chill Lo-Fi" },
+  { id: "cinematic", name: "Cinematic Build" },
+  { id: "corporate", name: "Corporate Bright" },
+] as const;
+export type MusicTrackId = (typeof MUSIC_TRACKS)[number]["id"];
+
+export type ReelEffect = "none" | "bw" | "warm" | "cool" | "vignette";
+
 export interface Reel {
   /** Equal to the source ClipCandidate id — the join key between real and local data. */
   id: string;
@@ -139,12 +150,16 @@ export interface Reel {
     startMs: number;
     endMs: number;
   };
+  /** Trim range within [source.startMs, source.endMs]; defaults to the full range. */
+  trim: { startMs: number; endMs: number };
   title: string;
   score: number;
   durationMs: number;
   status: ReelStatus;
   platform: Platform | null;
   captions: Caption[];
+  music: { trackId: MusicTrackId; volume: number };
+  effect: ReelEffect;
   thumbnailGradient: [string, string];
   publishedAt?: string;
   createdAt: string;

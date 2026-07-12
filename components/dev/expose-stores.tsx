@@ -6,6 +6,7 @@ import { useWorkspaceStore } from "@/stores/useWorkspaceStore";
 import { useProjectStore } from "@/stores/useProjectStore";
 import { useReelStore } from "@/stores/useReelStore";
 import { useProfileStore } from "@/stores/useProfileStore";
+import { seedWorkspaceDemoData } from "@/lib/mockSeed";
 
 /** Dev-only: exposes zustand stores on window for manual/browser-driven QA. No-op in production. */
 export function ExposeStores() {
@@ -17,6 +18,7 @@ export function ExposeStores() {
       useProjectStore,
       useReelStore,
       useProfileStore,
+      seedWorkspaceDemoData,
     });
   }, []);
 

@@ -12,7 +12,6 @@ import { VideoThumbnail } from "@/components/domain/video-thumbnail";
 import { ReelStatusBadge, ProjectStatusBadge } from "@/components/domain/status-badge";
 import { PlatformBadge } from "@/components/domain/platform-badge";
 import { GradientAvatar } from "@/components/domain/gradient-avatar";
-import { FilterTabs } from "@/components/domain/filter-tabs";
 import { SectionLabel } from "@/components/domain/section-label";
 import { WORKSPACE_GRADIENTS, THUMBNAIL_GRADIENTS } from "@/lib/gradients";
 import { FilterTabsInner } from "./filter-tabs-inner";

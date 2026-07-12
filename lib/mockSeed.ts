@@ -1,6 +1,39 @@
 import { nanoid } from "nanoid";
-import type { Platform, Project, Reel, ReelStatus } from "@/types/reelify";
+import type { Caption, Platform, Project, Reel, ReelStatus } from "@/types/reelify";
 import { THUMBNAIL_GRADIENTS } from "@/lib/gradients";
+
+const SAMPLE_CAPTION_TEXTS = [
+  "Meet our summer sensation",
+  "Refreshing. Bold. Zero calories.",
+  "Try it now ↓",
+];
+
+function makeSampleCaptions(durationMs: number): Caption[] {
+  const third = Math.round(durationMs / 3);
+  return [
+    {
+      id: `cap_${nanoid(6)}`,
+      startMs: 0,
+      endMs: third,
+      text: SAMPLE_CAPTION_TEXTS[0],
+      style: { size: "M", position: "bot", color: "#FFFFFF", background: "box" },
+    },
+    {
+      id: `cap_${nanoid(6)}`,
+      startMs: third,
+      endMs: third * 2,
+      text: SAMPLE_CAPTION_TEXTS[1],
+      style: { size: "M", position: "bot", color: "#FFFFFF", background: "box" },
+    },
+    {
+      id: `cap_${nanoid(6)}`,
+      startMs: third * 2,
+      endMs: durationMs,
+      text: SAMPLE_CAPTION_TEXTS[2],
+      style: { size: "M", position: "bot", color: "#FFFFFF", background: "box" },
+    },
+  ];
+}
 
 const PLATFORM_CYCLE: Platform[] = ["tiktok", "instagram_reels", "youtube_shorts"];
 
@@ -36,16 +69,22 @@ function makeReels(
   return Array.from({ length: count }, (_, i) => {
     const status: ReelStatus =
       i < publishedCount ? "published" : i === publishedCount ? "ready" : "draft";
+    const durationMs = 12_000 + (i % 4) * 6_000;
+    const clipStartMs = i * 15_000;
+    const clipEndMs = clipStartMs + durationMs;
     return {
       id: `reel_${nanoid(8)}`,
       projectId,
-      source: { videoId: "", startMs: i * 15_000, endMs: i * 15_000 + 15_000 },
+      source: { videoId: "", startMs: clipStartMs, endMs: clipEndMs },
+      trim: { startMs: clipStartMs, endMs: clipEndMs },
       title: REEL_TITLE_POOL[i % REEL_TITLE_POOL.length],
       score: 0.7 + (i % 5) * 0.05,
-      durationMs: 12_000 + (i % 4) * 6_000,
+      durationMs,
       status,
       platform: PLATFORM_CYCLE[i % PLATFORM_CYCLE.length],
-      captions: [],
+      captions: makeSampleCaptions(durationMs),
+      music: { trackId: "none", volume: 70 },
+      effect: "none",
       thumbnailGradient: THUMBNAIL_GRADIENTS[i % THUMBNAIL_GRADIENTS.length],
       createdAt: daysAgo(count - i),
     };
