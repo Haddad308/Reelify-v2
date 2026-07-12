@@ -3,6 +3,7 @@ import { Hanken_Grotesk } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/providers/query-provider";
+import { AuthInit } from "@/components/auth/auth-init";
 import "./globals.css";
 
 const hankenGrotesk = Hanken_Grotesk({
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <QueryProvider>
           <TooltipProvider>
+            <AuthInit />
             {children}
             <Toaster />
           </TooltipProvider>

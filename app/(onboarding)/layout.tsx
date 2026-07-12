@@ -1,3 +1,5 @@
+import { AuthGuard } from "@/components/auth/auth-guard";
+
 export default function OnboardingLayout({
   children,
 }: {
@@ -5,7 +7,7 @@ export default function OnboardingLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-fill-subtle">
-      {children}
+      <AuthGuard>{children}</AuthGuard>
     </div>
   );
 }

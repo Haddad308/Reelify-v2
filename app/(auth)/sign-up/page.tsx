@@ -14,18 +14,17 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/stores/useAuthStore";
-import { buildHostedUiGoogleUrl } from "@/lib/auth/cognito";
+import { signUp, buildHostedUiGoogleUrl } from "@/lib/auth/cognito";
 
 const schema = z.object({
+  fullName: z.string().min(1, "Full name is required"),
   email: z.string().email("Enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(8, "At least 8 characters"),
 });
 type FormValues = z.infer<typeof schema>;
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const router = useRouter();
-  const signIn = useAuthStore((s) => s.signIn);
   const {
     register,
     handleSubmit,
@@ -34,10 +33,10 @@ export default function SignInPage() {
 
   async function onSubmit(values: FormValues) {
     try {
-      await signIn(values.email, values.password);
-      router.push("/projects");
+      await signUp(values.email, values.password, values.fullName);
+      router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Sign in failed");
+      toast.error(err instanceof Error ? err.message : "Sign up failed");
     }
   }
 
@@ -46,23 +45,20 @@ export default function SignInPage() {
       <AuthTopNav>
         <div className="flex items-center gap-3">
           <span className="text-[13.5px] font-medium text-ink-tertiary">
-            No account?
+            Already a member?
           </span>
-          <Link
-            href="/sign-up"
-            className="text-[13.5px] font-bold text-brand"
-          >
-            Sign up free
+          <Link href="/sign-in" className="text-[13.5px] font-bold text-brand">
+            Sign in
           </Link>
         </div>
       </AuthTopNav>
 
       <AuthCard>
         <h1 className="mb-1.5 text-center text-[23px] font-extrabold tracking-tight text-ink">
-          Welcome back
+          Create your account
         </h1>
         <p className="mb-6.5 text-center text-[13.5px] font-medium text-ink-tertiary">
-          Sign in to your Reelify account
+          Start generating reels in minutes
         </p>
 
         <GoogleButton onClick={() => (window.location.href = buildHostedUiGoogleUrl())} />
@@ -70,20 +66,26 @@ export default function SignInPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email address</Label>
+            <Label htmlFor="fullName">Full name</Label>
+            <Input id="fullName" placeholder="Sarah Kim" {...register("fullName")} />
+            {errors.fullName && (
+              <p className="text-xs font-medium text-danger">{errors.fullName.message}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Work email</Label>
             <Input id="email" type="email" placeholder="you@company.com" {...register("email")} />
             {errors.email && (
               <p className="text-xs font-medium text-danger">{errors.email.message}</p>
             )}
           </div>
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link href="/forgot-password" className="text-[12.5px] font-semibold text-brand">
-                Forgot password?
-              </Link>
-            </div>
-            <PasswordInput id="password" placeholder="••••••••••" {...register("password")} />
+            <Label htmlFor="password">Password</Label>
+            <PasswordInput
+              id="password"
+              placeholder="At least 8 characters"
+              {...register("password")}
+            />
             {errors.password && (
               <p className="text-xs font-medium text-danger">{errors.password.message}</p>
             )}
@@ -91,17 +93,16 @@ export default function SignInPage() {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 w-full rounded-xl py-5.5 text-[15px] font-extrabold"
+            className="mt-1 w-full rounded-xl py-5.5 text-[15px] font-extrabold"
           >
-            {isSubmitting ? "Signing in…" : "Sign in"}
+            {isSubmitting ? "Creating account…" : "Create account"}
           </Button>
         </form>
 
-        <p className="mt-5 text-center text-[13.5px] font-medium text-ink-tertiary">
-          Don&apos;t have an account?{" "}
-          <Link href="/sign-up" className="font-bold text-brand">
-            Sign up free
-          </Link>
+        <p className="mt-4 text-center text-xs leading-relaxed text-muted-1">
+          By continuing you agree to our{" "}
+          <span className="font-semibold text-brand">Terms</span> and{" "}
+          <span className="font-semibold text-brand">Privacy Policy</span>
         </p>
       </AuthCard>
     </>
