@@ -1,8 +1,9 @@
 "use client";
 
 import { use, useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Share2, MessageSquare } from "lucide-react";
 import { AppTopNav } from "@/components/nav/app-top-nav";
 import { ProjectStatusBadge } from "@/components/domain/status-badge";
 import { VideoThumbnail } from "@/components/domain/video-thumbnail";
@@ -15,8 +16,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ShareProjectDialog } from "@/components/share/share-project-dialog";
 import { useProjectStore } from "@/stores/useProjectStore";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useCommentStore } from "@/stores/useCommentStore";
 import { useReelsForProject } from "@/hooks/useReelsForProject";
 import { useSyncProcessingJobToProject } from "@/hooks/useSyncProcessingJobToProject";
 import { createProcessingJob } from "@/lib/reelifyApi";
@@ -37,9 +40,14 @@ export default function ProjectDetailPage({
   const session = useAuthStore((s) => s.session);
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("newest");
+  const [shareProjectOpen, setShareProjectOpen] = useState(false);
 
   useSyncProcessingJobToProject(project);
   const reels = useReelsForProject(project);
+  const comments = useCommentStore((s) => s.comments);
+  const openCommentCount = comments.filter(
+    (c) => reels.some((r) => r.id === c.reelId) && c.status === "open",
+  ).length;
 
   const counts = useMemo(
     () => ({
@@ -118,6 +126,33 @@ export default function ProjectDetailPage({
             <span className="text-muted-1">{counts.draft} drafts</span>
           </div>
         </div>
+        {reels.length > 0 && (
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              className="gap-1.5"
+              render={<Link href={`/projects/${project.id}/feedback`} />}
+            >
+              <MessageSquare className="size-3.5" />
+              Feedback
+              {openCommentCount > 0 && (
+                <span className="rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {openCommentCount}
+                </span>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              className="gap-1.5 font-bold"
+              onClick={() => setShareProjectOpen(true)}
+            >
+              <Share2 className="size-3.5" />
+              Share project
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden p-7">
@@ -178,6 +213,13 @@ export default function ProjectDetailPage({
           </p>
         )}
       </div>
+
+      <ShareProjectDialog
+        project={project}
+        reels={reels}
+        open={shareProjectOpen}
+        onOpenChange={setShareProjectOpen}
+      />
     </>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MoreHorizontal, Pencil, Tag, Copy, Download, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Tag, Copy, Download, Trash2, Share2 } from "lucide-react";
 import { VideoThumbnail } from "./video-thumbnail";
 import { ReelStatusBadge } from "./status-badge";
 import { PlatformBadge } from "./platform-badge";
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { ShareReelDialog } from "@/components/share/share-reel-dialog";
 import { useReelStore } from "@/stores/useReelStore";
 import { formatDuration } from "@/lib/format";
 import type { Reel } from "@/types/reelify";
@@ -24,6 +26,7 @@ export function ReelCard({ reel }: { reel: Reel }) {
   const updateReel = useReelStore((s) => s.updateReel);
   const removeReel = useReelStore((s) => s.removeReel);
   const addReels = useReelStore((s) => s.addReels);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const editHref = `/projects/${reel.projectId}/reels/${reel.id}/edit`;
 
@@ -113,6 +116,9 @@ export function ReelCard({ reel }: { reel: Reel }) {
               <DropdownMenuItem onClick={handleDuplicate}>
                 <Copy className="size-3.5" /> Duplicate
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShareOpen(true)}>
+                <Share2 className="size-3.5" /> Share for review
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => toast.info("Download isn't available in this preview yet")}>
                 <Download className="size-3.5" /> Download
               </DropdownMenuItem>
@@ -124,6 +130,12 @@ export function ReelCard({ reel }: { reel: Reel }) {
           </DropdownMenu>
         </div>
       </div>
+      <ShareReelDialog
+        reel={reel}
+        projectId={reel.projectId}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
     </div>
   );
 }
