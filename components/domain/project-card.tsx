@@ -6,6 +6,7 @@ import { VideoThumbnail } from "./video-thumbnail";
 import { ProjectStatusBadge } from "./status-badge";
 import type { Project } from "@/types/reelify";
 import { formatDuration, formatShortDate } from "@/lib/format";
+import { useSyncProcessingJobToProject } from "@/hooks/useSyncProcessingJobToProject";
 
 interface ProjectCardProps {
   project: Project;
@@ -14,6 +15,7 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, reelCount, publishedCount }: ProjectCardProps) {
+  useSyncProcessingJobToProject(project);
   const [from, to] = project.thumbnailGradient;
 
   return (
