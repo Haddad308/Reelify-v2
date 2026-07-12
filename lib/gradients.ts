@@ -2,13 +2,17 @@
 // "create workspace" color picker, and demo video-thumbnail backgrounds all
 // draw from this same small palette.
 
+// Matches the "create workspace" logo color picker exactly (mockup screen 06).
 export const WORKSPACE_GRADIENTS = [
-  { name: "rose", from: "#FFB199", to: "#FF6B6B" },
+  { name: "rose", from: "#F43F5E", to: "#FB7185" },
   { name: "indigo", from: "#818CF8", to: "#6366F1" },
   { name: "green", from: "#34D399", to: "#059669" },
-  { name: "orange", from: "#FDBA74", to: "#EA580C" },
-  { name: "blue", from: "#7DD3FC", to: "#0284C7" },
+  { name: "orange", from: "#FB923C", to: "#EA580C" },
+  { name: "blue", from: "#38BDF8", to: "#0284C7" },
 ] as const;
+
+// One-off gradient used for the seeded "Nova Beverages" demo workspace only.
+export const DEMO_WORKSPACE_GRADIENT = { from: "#FFB199", to: "#FF6B6B" };
 
 // Dark gradients used behind video thumbnails (the reusable "fake video"
 // look: dark gradient rect + diagonal stripe texture + translucent play

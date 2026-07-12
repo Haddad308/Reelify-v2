@@ -80,7 +80,7 @@ export type ProjectStatus = "uploading" | "processing" | "completed" | "failed";
 
 export type ReelCountMode = "auto" | "5" | "10" | "15" | "20";
 
-export type WorkspacePlan = "Starter" | "Pro";
+export type WorkspacePlan = "Starter" | "Pro" | "Business";
 
 export interface Workspace {
   id: string;
@@ -106,6 +106,8 @@ export interface Project {
   status: ProjectStatus;
   /** Cosmetic upload progress (0-100) before a processing job exists. */
   uploadProgress?: number;
+  /** Cosmetic processing progress (0-100) for demo/seed projects with no real ProcessingJob to poll. */
+  processingProgress?: number;
   sourceDurationMs?: number;
   sourceSizeBytes?: number;
   thumbnailGradient: [string, string];

@@ -1,3 +1,5 @@
+import { RedirectIfAuthenticated } from "@/components/auth/redirect-if-authenticated";
+
 export default function AuthLayout({
   children,
 }: {
@@ -5,7 +7,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-fill-subtle">
-      {children}
+      <RedirectIfAuthenticated>{children}</RedirectIfAuthenticated>
     </div>
   );
 }
