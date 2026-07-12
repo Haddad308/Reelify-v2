@@ -2,16 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ChevronDown, Plus, Search } from "lucide-react";
+import { ChevronRight, Plus, Search } from "lucide-react";
 import { Logo } from "./logo";
-import { GradientAvatar } from "@/components/domain/gradient-avatar";
+import { WorkspaceSwitcher } from "./workspace-switcher";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useWorkspaceStore } from "@/stores/useWorkspaceStore";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { initialsFromName } from "@/lib/gradients";
@@ -26,7 +25,6 @@ export function AppTopNav({
   rightSlot?: React.ReactNode;
 }) {
   const router = useRouter();
-  const workspace = useWorkspaceStore((s) => s.getActiveWorkspace());
   const { firstName, lastName } = useProfileStore();
   const signOut = useAuthStore((s) => s.signOut);
 
@@ -41,22 +39,9 @@ export function AppTopNav({
       </Link>
       <div className="mr-4.5 h-5 w-px shrink-0 bg-[#EAEAEC]" />
 
-      {workspace && (
-        <button
-          type="button"
-          className="mr-1 flex shrink-0 items-center gap-2 rounded-xl border border-border-input bg-white py-1.5 pr-2.5 pl-1.5"
-        >
-          <GradientAvatar
-            initials={workspace.initials}
-            from={workspace.gradientFrom}
-            to={workspace.gradientTo}
-            shape="square"
-            size="sm"
-          />
-          <span className="text-[13.5px] font-bold text-ink">{workspace.name}</span>
-          <ChevronDown className="size-3.5 text-muted-1" />
-        </button>
-      )}
+      <div className="mr-1">
+        <WorkspaceSwitcher />
+      </div>
 
       {breadcrumb && (
         <>
