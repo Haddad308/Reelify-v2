@@ -54,7 +54,7 @@ export function VideoThumbnail({
 
       <div
         className={cn(
-          "relative z-10 flex items-center justify-center rounded-full bg-white/13",
+          "relative z-10 flex items-center justify-center rounded-full bg-white/13 transition-transform duration-200 group-hover:scale-110",
           playButtonSize === "sm" ? "size-9" : "size-11",
         )}
       >

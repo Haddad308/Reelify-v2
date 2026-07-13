@@ -17,10 +17,10 @@ export function PlatformSelectChip({
       type="button"
       onClick={onToggle}
       className={cn(
-        "flex items-center gap-2 rounded-full border-[1.5px] px-3.5 py-2 text-[13px] font-semibold",
+        "flex items-center gap-2 rounded-full border-[1.5px] px-3.5 py-2 text-[13px] font-semibold transition-colors duration-150",
         selected
           ? "border-brand bg-brand-tint text-ink"
-          : "border-border-input bg-white text-ink-tertiary",
+          : "border-border-input bg-white text-ink-tertiary hover:border-ink-tertiary/40 hover:text-ink",
       )}
     >
       <PlatformDot platform={platform} />

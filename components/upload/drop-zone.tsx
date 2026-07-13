@@ -24,7 +24,7 @@ export function DropZone({ onFileSelected }: { onFileSelected: (file: File) => v
         if (file) onFileSelected(file);
       }}
       className={cn(
-        "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-fill-subtle px-8 py-12 text-center",
+        "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-fill-subtle px-8 py-12 text-center transition-colors duration-200",
         dragging ? "border-brand bg-brand-tint" : "border-border-input",
       )}
     >

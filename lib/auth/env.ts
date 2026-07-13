@@ -26,8 +26,13 @@ export const authEnv = {
   siteUrl: required("NEXT_PUBLIC_SITE_URL", process.env.NEXT_PUBLIC_SITE_URL),
 };
 
+// In dev, route through the same-origin Next.js proxy (see next.config.ts
+// rewrites) since api.reelify.cc doesn't send CORS headers for browser calls.
 export const apiEnv = {
-  apiBase: required("NEXT_PUBLIC_API_BASE", process.env.NEXT_PUBLIC_API_BASE),
+  apiBase:
+    process.env.NODE_ENV === "development"
+      ? "/api/reelify"
+      : required("NEXT_PUBLIC_API_BASE", process.env.NEXT_PUBLIC_API_BASE),
   pilotWorkspaceId: required(
     "NEXT_PUBLIC_PILOT_WORKSPACE_ID",
     process.env.NEXT_PUBLIC_PILOT_WORKSPACE_ID,

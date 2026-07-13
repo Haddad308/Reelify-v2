@@ -76,7 +76,17 @@ export default function NewProjectUploadPage() {
   }
 
   async function handleStartProcessing() {
-    if (!file || !workspace || !session) return;
+    if (!file) return;
+    if (!session) {
+      toast.error("Sign in to continue");
+      router.push("/sign-in");
+      return;
+    }
+    if (!workspace) {
+      toast.error("Create a workspace to continue");
+      router.push("/onboarding/workspace");
+      return;
+    }
     setSubmitting(true);
 
     const project = {

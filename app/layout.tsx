@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/providers/query-provider";
 import { AuthInit } from "@/components/auth/auth-init";
 import { ExposeStores } from "@/components/dev/expose-stores";
+import { LocatorUI } from "@/components/dev/locator-ui";
 import "./globals.css";
 
 const hankenGrotesk = Hanken_Grotesk({
@@ -30,6 +31,7 @@ export default function RootLayout({
           <TooltipProvider>
             <AuthInit />
             <ExposeStores />
+            <LocatorUI />
             {children}
             <Toaster />
           </TooltipProvider>

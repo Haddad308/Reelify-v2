@@ -21,11 +21,11 @@ export function ProjectCard({ project, reelCount, publishedCount }: ProjectCardP
   return (
     <Link
       href={`/projects/${project.id}`}
-      className="block overflow-hidden rounded-2xl border border-border-subtle bg-white"
+      className="group block overflow-hidden rounded-2xl border border-border-subtle bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:shadow-md"
     >
       <VideoThumbnail
         gradient={[from, to]}
-        className="h-[188px] w-full"
+        className="h-[188px] w-full transition-transform duration-300 group-hover:scale-[1.03]"
         topRight={<ProjectStatusBadge status={project.status} variant="solid" />}
         bottomRight={
           project.sourceDurationMs ? (
@@ -66,7 +66,7 @@ export function ProjectCard({ project, reelCount, publishedCount }: ProjectCardP
           <>
             <div className="mb-2.5 h-1 overflow-hidden rounded-full bg-fill-3">
               <div
-                className="h-full rounded-full"
+                className="h-full rounded-full transition-[width] duration-500 ease-out"
                 style={{
                   width: `${project.processingProgress ?? 0}%`,
                   backgroundImage: "linear-gradient(90deg, #F43F5E, #FF7C8A)",
@@ -90,7 +90,7 @@ export function ProjectCard({ project, reelCount, publishedCount }: ProjectCardP
             </div>
             <div className="mb-2 h-1 overflow-hidden rounded-full bg-fill-3">
               <div
-                className="h-full rounded-full"
+                className="h-full rounded-full transition-[width] duration-500 ease-out"
                 style={{
                   width: `${project.uploadProgress ?? 0}%`,
                   backgroundImage: "linear-gradient(90deg, #2563EB, #60A5FA)",

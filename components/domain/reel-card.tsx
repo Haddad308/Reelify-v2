@@ -53,10 +53,10 @@ export function ReelCard({ reel }: { reel: Reel }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border-subtle bg-white">
+    <div className="group overflow-hidden rounded-2xl border border-border-subtle bg-white transition-shadow duration-200 hover:shadow-lg">
       <VideoThumbnail
         gradient={reel.thumbnailGradient}
-        className="h-[258px] w-full"
+        className="h-[258px] w-full transition-transform duration-300 group-hover:scale-[1.03]"
         playButtonSize="sm"
         topRight={
           <ReelStatusBadge
@@ -96,7 +96,7 @@ export function ReelCard({ reel }: { reel: Reel }) {
                 <button
                   type="button"
                   aria-label="More reel options"
-                  className="flex size-[30px] shrink-0 items-center justify-center rounded-lg border border-border-input bg-white"
+                  className="flex size-[30px] shrink-0 items-center justify-center rounded-lg border border-border-input bg-white transition-colors duration-150 hover:bg-fill-subtle"
                 >
                   <MoreHorizontal className="size-3.5 text-muted-1" />
                 </button>

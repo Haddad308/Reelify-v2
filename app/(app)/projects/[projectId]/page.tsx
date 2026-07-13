@@ -3,13 +3,14 @@
 import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronDown, Share2, MessageSquare } from "lucide-react";
+import { ChevronDown, Share2, MessageSquare, Loader2 } from "lucide-react";
 import { AppTopNav } from "@/components/nav/app-top-nav";
 import { ProjectStatusBadge } from "@/components/domain/status-badge";
 import { VideoThumbnail } from "@/components/domain/video-thumbnail";
 import { ReelCard } from "@/components/domain/reel-card";
 import { FilterTabs } from "@/components/domain/filter-tabs";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -156,17 +157,34 @@ export default function ProjectDetailPage({
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden p-7">
-        {project.status === "processing" && (
-          <p className="mb-4 text-xs font-medium text-muted-1">
-            {project.processingProgress ?? 0}% — updates live via the real processing-job poll.
-          </p>
-        )}
-        {project.status === "failed" && project.videoId && (
+        {project.status === "uploading" && (
           <div className="mb-4 flex items-center gap-3">
-            <p className="text-xs font-medium text-danger">{project.errorMessage}</p>
-            <Button size="sm" variant="outline" onClick={handleRetry}>
-              Retry processing
-            </Button>
+            <Loader2 className="size-4 shrink-0 animate-spin text-brand" />
+            <span className="shrink-0 text-xs font-semibold text-ink">
+              Uploading{project.uploadProgress ? ` — ${project.uploadProgress}%` : "…"}
+            </span>
+            <Progress value={project.uploadProgress ?? 0} className="max-w-xs flex-1" />
+          </div>
+        )}
+        {project.status === "processing" && (
+          <div className="mb-4 flex items-center gap-3">
+            <Loader2 className="size-4 shrink-0 animate-spin text-brand" />
+            <span className="shrink-0 text-xs font-semibold text-ink">
+              Processing — {project.processingProgress ?? 0}%
+            </span>
+            <Progress value={project.processingProgress ?? 0} className="max-w-xs flex-1" />
+          </div>
+        )}
+        {project.status === "failed" && (
+          <div className="mb-4 flex items-center gap-3">
+            <p className="text-xs font-medium text-danger">
+              {project.errorMessage ?? "Something went wrong"}
+            </p>
+            {project.videoId && (
+              <Button size="sm" variant="outline" onClick={handleRetry}>
+                Retry processing
+              </Button>
+            )}
           </div>
         )}
 
