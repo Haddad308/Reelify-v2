@@ -1,0 +1,15 @@
+**/node_modules
+.git
+.next
+apps/**/.next
+db/generated
+raw-videos-samples
+*.log
+.env
+.env.local
+.env.*.local
+infra/terraform/**/.terraform
+**/*.tfstate
+**/*.tfstate.*
+AWSCLIV2.pkg
+*.pkg

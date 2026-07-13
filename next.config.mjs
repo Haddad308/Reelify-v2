@@ -1,0 +1,76 @@
+import { withSentryConfig } from "@sentry/nextjs";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Self-contained server bundle for the container image (ECS/Fargate).
+  output: "standalone",
+  // Use Babel instead of SWC if SWC fails
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
+  // Ensure FFmpeg.wasm works in browser
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+        stream: false,
+        util: false,
+      };
+    }
+    return config;
+  },
+  // Optimize for video handling
+  experimental: {
+    optimizePackageImports: ["@ffmpeg/ffmpeg", "@ffmpeg/util"],
+  },
+  // Note: COEP headers removed to allow cross-origin resources (Vercel Blob Storage)
+  // Modern FFmpeg.wasm doesn't require COEP for basic operations
+  // If SharedArrayBuffer is needed in the future, use COEP: credentialless
+  // and ensure all cross-origin resources have proper CORP headers
+  // Explicitly use webpack instead of Turbopack for FFmpeg.wasm compatibility
+  // Turbopack doesn't support webpack fallbacks yet
+};
+
+export default withSentryConfig(withNextIntl(nextConfig), {
+  // For all available options, see:
+  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
+
+  org: "reelify-l5",
+
+  project: "reelify",
+
+  // Only print logs for uploading source maps in CI
+  silent: !process.env.CI,
+
+  // For all available options, see:
+  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+
+  // Upload a larger set of source maps for prettier stack traces (increases build time)
+  widenClientFileUpload: true,
+
+  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
+  // This can increase your server load as well as your hosting bill.
+  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
+  // side errors will fail.
+  tunnelRoute: "/monitoring",
+
+  webpack: {
+    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
+    // See the following for more information:
+    // https://docs.sentry.io/product/crons/
+    // https://vercel.com/docs/cron-jobs
+    automaticVercelMonitors: true,
+
+    // Tree-shaking options for reducing bundle size
+    treeshake: {
+      // Automatically tree-shake Sentry logger statements to reduce bundle size
+      removeDebugLogging: true,
+    },
+  },
+});

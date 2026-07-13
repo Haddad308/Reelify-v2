@@ -1,0 +1,116 @@
+-- =============================================
+-- Reelify Credit System Schema  (unit = minutes)
+-- =============================================
+-- Run this against your Supabase project SQL editor.
+--
+-- If you already have a users table without email/phone, run first:
+--   alter table users add column if not exists email text default '';
+--   alter table users add column if not exists phone text default '';
+--   update users set email = 'unknown@localhost', phone = '—' where email = '' or phone = '';
+--   alter table users alter column email set not null, alter column phone set not null;
+
+-- Users table: managed by admin, holds credits (all in minutes)
+create table if not exists users (
+  id uuid primary key default gen_random_uuid(),
+  display_name text not null,
+  email text not null,
+  phone text not null,
+  credits_remaining integer not null default 180,  -- total minutes (3 hours default)
+  title text default '',
+  company text default '',
+  notes text default '',
+  priority text default '',
+  source text default '',
+  created_at timestamptz not null default now()
+);
+
+-- Admin config: dashboard password stored in DB (set via Supabase dashboard or SQL)
+create table if not exists admin_config (
+  key text primary key,
+  value text not null
+);
+
+-- Insert default admin secret; change this value in Supabase after first run
+insert into admin_config (key, value) values ('dashboard_secret', 'change-me')
+  on conflict (key) do nothing;
+
+-- Usage events: one row per processing request (all in minutes)
+create table if not exists usage_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  source_duration_minutes integer not null,
+  credits_charged integer not null,
+  created_at timestamptz not null default now()
+);
+
+-- Index for fast per-user lookups
+create index if not exists idx_usage_events_user_id on usage_events(user_id);
+create index if not exists idx_usage_events_created_at on usage_events(created_at desc);
+
+-- Demo requests: landing page registrations
+create table if not exists demo_requests (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null,
+  phone text not null,
+  help_text text not null,
+  locale text,
+  status text not null default 'pending',
+  job_title text not null default '',
+  company_name text not null default '',
+  source text not null default 'Demo Request',
+  priority text not null default 'low',
+  credits_min integer not null default 180,
+  approved_user_id uuid,
+  created_at timestamptz not null default now()
+);
+
+-- Run these if you already have a demo_requests table without the new columns:
+-- alter table demo_requests add column if not exists job_title text not null default '';
+-- alter table demo_requests add column if not exists company_name text not null default '';
+-- alter table demo_requests add column if not exists source text not null default 'Demo Request';
+-- alter table demo_requests add column if not exists priority text not null default 'low';
+-- alter table demo_requests add column if not exists credits_min integer not null default 180;
+-- alter table demo_requests add column if not exists approved_user_id uuid;
+
+create index if not exists idx_demo_requests_created_at on demo_requests(created_at desc);
+
+-- RPC: atomically check credits, charge, and log usage.
+-- p_duration_minutes is the video length rounded up to the next whole minute.
+-- Max video duration (2 hours) is enforced at the API layer, not here.
+-- Returns JSON: { "ok": true } or { "ok": false, "error": "..." }
+create or replace function charge_credits(
+  p_user_id uuid,
+  p_duration_minutes integer
+) returns jsonb
+language plpgsql
+as $$
+declare
+  v_user users%rowtype;
+begin
+  -- Lock the user row to prevent race conditions
+  select * into v_user from users where id = p_user_id for update;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'User not found');
+  end if;
+
+  if v_user.credits_remaining < p_duration_minutes then
+    return jsonb_build_object(
+      'ok', false,
+      'error', format('Insufficient credits: need %s min but only %s min remaining', p_duration_minutes, v_user.credits_remaining)
+    );
+  end if;
+
+  -- Deduct credits
+  update users
+    set credits_remaining = credits_remaining - p_duration_minutes
+    where id = p_user_id;
+
+  -- Log usage event
+  insert into usage_events (user_id, source_duration_minutes, credits_charged)
+    values (p_user_id, p_duration_minutes, p_duration_minutes);
+
+  return jsonb_build_object('ok', true);
+end;
+$$;

@@ -1,0 +1,413 @@
+.container {
+  padding: 12px;
+  background: hsl(var(--card));
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+  flex-shrink: 0;
+  overflow-x: auto;
+  max-height: 200px;
+  box-shadow:
+    0 4px 10px -2px rgba(0, 0, 0, 0.06),
+    0 18px 40px -12px rgba(0, 0, 0, 0.12);
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 14px;
+    max-height: 220px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 16px;
+    max-height: 240px;
+  }
+}
+
+.timeLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  font-family: "Courier New", monospace;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.timeLabel {
+  font-weight: 500;
+}
+
+.trackContainer {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.track {
+  position: relative;
+  height: 50px;
+  background: hsl(var(--muted));
+  border-radius: 8px;
+  overflow: visible;
+}
+
+@media (min-width: 1024px) {
+  .track {
+    height: 55px;
+  }
+}
+
+.fullTrack {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(to right, hsl(var(--muted)) 0%, hsl(var(--muted) / 0.8) 100%);
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+}
+
+.trimRegion {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: rgba(255, 107, 122, 0.2);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1;
+  box-sizing: border-box;
+  /* Ensure it doesn't overflow - calculation handles boundaries */
+}
+
+/* Marker sliders - span full width */
+.startMarkerSlider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none; /* Disable container pointer events - only thumb is interactive */
+  display: flex;
+  align-items: center;
+}
+
+.endMarkerSlider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none; /* Disable container pointer events - only thumb is interactive */
+  display: flex;
+  align-items: center;
+}
+
+.markerTrack {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: transparent;
+  pointer-events: none; /* Disable track clicks - only thumb is draggable */
+}
+
+.markerRange {
+  display: none;
+}
+
+.markerThumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 50px;
+  background: linear-gradient(
+    135deg,
+    hsl(354 100% 71%) 0%,
+    hsl(354 100% 65%) 45%,
+    hsl(354 72% 56%) 100%
+  );
+  border: 2px solid hsl(var(--card));
+  box-shadow: 0 2px 8px rgba(255, 107, 122, 0.3);
+  cursor: ew-resize;
+  z-index: 5;
+  position: relative;
+  transform: translateX(-50%);
+  pointer-events: auto; /* Enable pointer events only on thumb */
+  touch-action: none; /* Prevent touch scrolling while dragging */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 1024px) {
+  .markerThumb {
+    width: 22px;
+    height: 55px;
+  }
+}
+
+.markerThumb:hover {
+  background: linear-gradient(
+    135deg,
+    hsl(354 100% 65%) 0%,
+    hsl(354 100% 60%) 45%,
+    hsl(354 72% 50%) 100%
+  );
+  box-shadow: 0 4px 12px rgba(255, 107, 122, 0.4);
+  transform: translateX(-50%) scale(1.05);
+}
+
+.markerThumb:focus {
+  outline: none;
+  box-shadow:
+    0 4px 12px rgba(255, 107, 122, 0.4),
+    0 0 0 3px rgba(255, 107, 122, 0.3);
+}
+
+.markerThumb:active {
+  cursor: grabbing;
+}
+
+.startMarker {
+  border-radius: 6px 0 0 6px; /* Rounded left, square right */
+  border-right: 3px solid hsl(var(--card));
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.endMarker {
+  border-radius: 0 6px 6px 0; /* Square left, rounded right */
+  border-left: 3px solid hsl(var(--card));
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.markerLine {
+  display: none; /* Hide the line inside the marker - it's redundant with the thumb itself */
+}
+
+.markerLabel {
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
+}
+
+/* Playhead indicator (visual only, not interactive) */
+.playheadIndicator {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.playheadLine {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  background: hsl(354 100% 71%);
+  transform: translateX(-50%);
+  box-shadow: 0 0 4px rgba(255, 107, 122, 0.5);
+}
+
+.playheadHead {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: hsl(354 100% 71%);
+  border: 2px solid hsl(var(--card));
+  border-radius: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 2px 6px rgba(255, 107, 122, 0.3);
+}
+
+/* ±1s trim controls */
+.trimControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.trimControlGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trimControlLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 36px;
+}
+
+.trimControlButtons {
+  display: flex;
+  gap: 4px;
+}
+
+.trimBtn {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.trimBtn:hover:not(:disabled) {
+  background: hsl(var(--muted) / 0.8);
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.trimBtn:active:not(:disabled) {
+  background: hsl(var(--muted));
+  transform: scale(0.98);
+}
+
+.trimBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Info display */
+.infoDisplay {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid hsl(var(--border));
+  font-size: 12px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoLabel {
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.infoValue {
+  color: hsl(var(--foreground));
+  font-family: "Courier New", monospace;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Editable time field - looks like an input to signal "click to edit" */
+.infoValueEditable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  min-width: 100px;
+  font-family: "Courier New", monospace;
+  font-weight: 600;
+  font-size: 13px;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
+  border: 1px dashed hsl(var(--border));
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.infoValueEditable:hover {
+  background: hsl(var(--muted) / 0.8);
+  border-color: hsl(var(--primary));
+  border-style: solid;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15);
+}
+
+.infoValueEditable:focus-visible {
+  outline: none;
+  border-color: hsl(var(--primary));
+  border-style: solid;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
+}
+
+.infoValueText {
+  flex: 1;
+  min-width: 0;
+}
+
+.infoValueIcon {
+  width: 14px;
+  height: 14px;
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.infoValueEditable:hover .infoValueIcon {
+  color: hsl(var(--primary));
+}
+
+/* Active editing state */
+.infoValueInput {
+  width: 100%;
+  max-width: 120px;
+  padding: 6px 10px;
+  font-family: "Courier New", monospace;
+  font-weight: 600;
+  font-size: 13px;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  border: 2px solid hsl(var(--primary));
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.infoValueInput::placeholder {
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.infoValueInput:focus {
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.25);
+}
